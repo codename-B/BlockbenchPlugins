@@ -23,6 +23,7 @@ let importAction;
 let reExportAction;
 let debugAction;
 let onGroupAdd;
+let onProjectLoad;
 
 BBPlugin.register('vs_plugin', {
     title: 'Vintage Story Format Support',
@@ -85,15 +86,10 @@ BBPlugin.register('vs_plugin', {
                 }
             },
             compile(options) {
-                // Removed for now since it doesn't work
-                // resetStepparentTransforms();
                 return ex(options);
             },
             parse(data, file_path, add) {
                 im(data, file_path, false);
-                // Removed for now since it doesn't work
-                // loadBackDropShape();
-                // resolveStepparentTransforms();
             },
         });
 
@@ -186,6 +182,94 @@ BBPlugin.register('vs_plugin', {
         });
         MenuBar.addAction(importAction, 'file.import');
 
+        const convertProjectToVSFormat = () => {
+            if (!Project) return;
+            if (Project.format && Project.format.id === 'formatVS') return;
+            if (Project.vsFormatConverted) {
+                // Already converted, just switch format and update canvas
+                console.log('[VS Plugin] File already converted, switching format');
+                Project.format = formatVS;
+
+                // Update all preview controllers
+                for (const group of Group.all) {
+                    Canvas.updateView({groups: [group]});
+                }
+                for (const cube of Cube.all) {
+                    if (cube.preview_controller) {
+                        cube.preview_controller.updateTransform(cube);
+                    }
+                }
+
+                Canvas.updateAllBones();
+                Canvas.updateAllPositions();
+                Canvas.updateAll();
+                return;
+            }
+
+            const old_format = Project.format?.id || 'unknown';
+            const old_euler_order = Project.format?.euler_order || 'ZYX';
+
+            console.log('[VS Plugin] Converting:', old_format, old_euler_order);
+            console.log('[VS Plugin] Group.all.length:', Group.all.length, 'Cube.all.length:', Cube.all.length);
+
+            // Convert rotation VALUES from ZYX to XYZ
+            if (old_euler_order !== 'XYZ') {
+                for (const group of Group.all) {
+                    if (group.rotation && (group.rotation[0] !== 0 || group.rotation[1] !== 0 || group.rotation[2] !== 0)) {
+                        const old_rotation = [group.rotation[0], group.rotation[1], group.rotation[2]] as [number, number, number];
+                        const new_rotation = util.zyx_to_xyz(old_rotation);
+                        console.log('[VS Plugin] Converting group:', group.name, old_rotation, '→', new_rotation);
+                        group.rotation[0] = new_rotation[0];
+                        group.rotation[1] = new_rotation[1];
+                        group.rotation[2] = new_rotation[2];
+                    }
+                }
+
+                for (const cube of Cube.all) {
+                    if (cube.rotation && (cube.rotation[0] !== 0 || cube.rotation[1] !== 0 || cube.rotation[2] !== 0)) {
+                        const old_rotation = [cube.rotation[0], cube.rotation[1], cube.rotation[2]] as [number, number, number];
+                        const new_rotation = util.zyx_to_xyz(old_rotation);
+                        console.log('[VS Plugin] Converting cube:', cube.name, old_rotation, '→', new_rotation);
+                        cube.rotation[0] = new_rotation[0];
+                        cube.rotation[1] = new_rotation[1];
+                        cube.rotation[2] = new_rotation[2];
+                    }
+                }
+            }
+
+            // Switch format (this changes how Blockbench interprets rotations)
+            Project.format = formatVS;
+            Project.vsFormatConverted = true;
+
+            // Change Three.js euler order on all meshes to match VS format
+            for (const group of Group.all) {
+                if (group.mesh && group.mesh.rotation) {
+                    console.log('[VS Plugin] Setting group mesh rotation order to XYZ:', group.name);
+                    group.mesh.rotation.order = 'XYZ';
+                }
+            }
+
+            for (const cube of Cube.all) {
+                if (cube.preview_controller && cube.preview_controller.mesh && cube.preview_controller.mesh.rotation) {
+                    console.log('[VS Plugin] Setting cube mesh rotation order to XYZ:', cube.name);
+                    cube.preview_controller.mesh.rotation.order = 'XYZ';
+                }
+            }
+
+            Canvas.updateAllBones();
+            Canvas.updateAllPositions();
+            Canvas.updateAll();
+
+            Blockbench.showQuickMessage('Converted to VS format', 3000);
+        };
+
+        // Do everything together with delay for elements to load
+        onProjectLoad = () => {
+            setTimeout(convertProjectToVSFormat, 1000);
+        };
+
+        Blockbench.on('load_project', onProjectLoad);
+
         reExportAction = new Action("reExport", {
             name: 'Reexport Test',
             icon: 'fa-flask-vial',
@@ -257,6 +341,7 @@ BBPlugin.register('vs_plugin', {
         reExportAction.delete();
         debugAction.delete();
         Blockbench.removeListener('add_group', onGroupAdd);
+        Blockbench.removeListener('load_project', onProjectLoad);
     }
 });
 

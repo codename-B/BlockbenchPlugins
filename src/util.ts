@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
+declare const THREE: any;
+
 const fps = 30;
 
 const get_texture_location = function (domain, rel_path) {
@@ -137,6 +139,38 @@ function vector_sub(a: [number,number,number], b: [number,number,number]): [numb
     return c;
 }
 
+/** Convert rotation from ZYX euler order to XYZ */
+function zyx_to_xyz(rotation: [number, number, number]): [number, number, number] {
+    const converted = new THREE.Euler(
+        THREE.MathUtils.degToRad(rotation[0]),
+        THREE.MathUtils.degToRad(rotation[1]),
+        THREE.MathUtils.degToRad(rotation[2]),
+        'ZYX'
+    ).reorder('XYZ').toArray();
+
+    return [
+        THREE.MathUtils.radToDeg(converted[0]),
+        THREE.MathUtils.radToDeg(converted[1]),
+        THREE.MathUtils.radToDeg(converted[2])
+    ];
+}
+
+/** Convert rotation from XYZ euler order to ZYX */
+function xyz_to_zyx(rotation: [number, number, number]): [number, number, number] {
+    const converted = new THREE.Euler(
+        THREE.MathUtils.degToRad(rotation[0]),
+        THREE.MathUtils.degToRad(rotation[1]),
+        THREE.MathUtils.degToRad(rotation[2]),
+        'XYZ'
+    ).reorder('ZYX').toArray();
+
+    return [
+        THREE.MathUtils.radToDeg(converted[0]),
+        THREE.MathUtils.radToDeg(converted[1]),
+        THREE.MathUtils.radToDeg(converted[2])
+    ];
+}
+
 export {
     fps,
     get_texture_location,
@@ -147,4 +181,6 @@ export {
     vector_add,
     vector_sub,
     vector_inv,
+    zyx_to_xyz,
+    xyz_to_zyx,
 };
