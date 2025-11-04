@@ -96,10 +96,15 @@ BBPlugin.register('vs_plugin', {
                 }
             },
             compile(options) {
+                // Removed for now since it doesn't work
+                // resetStepparentTransforms();
                 return ex(options);
             },
             parse(data, file_path, add) {
                 im(data, file_path, false);
+                // Removed for now since it doesn't work
+                // loadBackDropShape();
+                // resolveStepparentTransforms();
             },
         });
 
