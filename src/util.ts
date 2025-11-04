@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-
-declare const THREE: any;
+declare const THREE: typeof import('three');
 
 const fps = 30;
 
@@ -85,7 +84,7 @@ function setParent(child, parent) {
 function removeParent(child, parent) {
     visit_tree(child, {
         visit_cube: (child, _p) => {
-            child.moveVector([-parent.from[0], -parent.from[1],-parent.from[2]], null, true);
+            child.moveVector([-parent.from[0], -parent.from[1], -parent.from[2]], null, true);
             child.origin = [child.origin[0] - parent.from[0], child.origin[1] - parent.from[1], child.origin[2] - parent.from[2]];
         },
         visit_group: (child, _p) => {
@@ -114,60 +113,48 @@ function update_children(node) {
 
 }
 
-function vector_add(a: [number,number,number], b: [number,number,number]): [number,number,number] {
-    const c: [number,number,number] = [0,0,0];
-    for(let i = 0 ; i < a.length ; i++) {
+function vector_add(a: [number, number, number], b: [number, number, number]): [number, number, number] {
+    const c: [number, number, number] = [0, 0, 0];
+    for (let i = 0; i < a.length; i++) {
         c[i] = a[i] + b[i];
     }
     return c;
 }
 
-function vector_inv(a: [number,number,number]): [number,number,number] {
-    const c: [number,number,number] = [0,0,0];
-    for(let i = 0 ; i < a.length ; i++) {
+function vector_inv(a: [number, number, number]): [number, number, number] {
+    const c: [number, number, number] = [0, 0, 0];
+    for (let i = 0; i < a.length; i++) {
         c[i] = - a[i];
     }
-   
+
     return c;
 }
 
-function vector_sub(a: [number,number,number], b: [number,number,number]): [number,number,number] {
-    const c: [number,number,number] = [0,0,0];
-    for(let i = 0 ; i < a.length ; i++) {
+function vector_sub(a: [number, number, number], b: [number, number, number]): [number, number, number] {
+    const c: [number, number, number] = [0, 0, 0];
+    for (let i = 0; i < a.length; i++) {
         c[i] = a[i] - b[i];
     }
     return c;
 }
 
 /** Convert rotation from ZYX euler order to XYZ */
-function zyx_to_xyz(rotation: [number, number, number]): [number, number, number] {
-    const converted = new THREE.Euler(
+function zyx_to_xyz(rotation: readonly [number, number, number]): [number, number, number] {
+    const euler = new THREE.Euler(
         THREE.MathUtils.degToRad(rotation[0]),
         THREE.MathUtils.degToRad(rotation[1]),
         THREE.MathUtils.degToRad(rotation[2]),
         'ZYX'
-    ).reorder('XYZ').toArray();
+    );
 
+    // Reorder to XYZ
+    euler.reorder('XYZ');
+
+    // Access properties directly - toArray() returns [x, y, z, order] with 4 elements
     return [
-        THREE.MathUtils.radToDeg(converted[0]),
-        THREE.MathUtils.radToDeg(converted[1]),
-        THREE.MathUtils.radToDeg(converted[2])
-    ];
-}
-
-/** Convert rotation from XYZ euler order to ZYX */
-function xyz_to_zyx(rotation: [number, number, number]): [number, number, number] {
-    const converted = new THREE.Euler(
-        THREE.MathUtils.degToRad(rotation[0]),
-        THREE.MathUtils.degToRad(rotation[1]),
-        THREE.MathUtils.degToRad(rotation[2]),
-        'XYZ'
-    ).reorder('ZYX').toArray();
-
-    return [
-        THREE.MathUtils.radToDeg(converted[0]),
-        THREE.MathUtils.radToDeg(converted[1]),
-        THREE.MathUtils.radToDeg(converted[2])
+        THREE.MathUtils.radToDeg(euler.x),
+        THREE.MathUtils.radToDeg(euler.y),
+        THREE.MathUtils.radToDeg(euler.z)
     ];
 }
 
@@ -182,5 +169,4 @@ export {
     vector_sub,
     vector_inv,
     zyx_to_xyz,
-    xyz_to_zyx,
 };
