@@ -61,6 +61,16 @@ BBPlugin.register('vs_plugin', {
             }
         });
 
+        const auto_convert_vs_format_setting = new Setting("auto_convert_vs_format", {
+            name: "Auto-Convert to VS Format",
+            description: "Automatically convert projects to Vintage Story format when loading .bbmodel files",
+            type: "toggle",
+            value: true,
+            onChange(_value: boolean) {
+                Settings.save();
+            }
+        });
+
         onGroupAdd = function () {
 
             const group = Group.first_selected;
@@ -254,7 +264,9 @@ BBPlugin.register('vs_plugin', {
 
         // Do everything together with delay for elements to load
         onProjectLoad = () => {
-            setTimeout(convertProjectToVSFormat, 1000);
+            if (auto_convert_vs_format_setting.value) {
+                setTimeout(convertProjectToVSFormat, 1000);
+            }
         };
 
         Blockbench.on('load_project', onProjectLoad);
