@@ -138,7 +138,7 @@ function vector_sub(a: [number, number, number], b: [number, number, number]): [
     return c;
 }
 
-/** Convert rotation from ZYX euler order to XYZ */
+// Convert ZYX to XYZ euler angles
 function zyx_to_xyz(rotation: readonly [number, number, number]): [number, number, number] {
     const euler = new THREE.Euler(
         THREE.MathUtils.degToRad(rotation[0]),
@@ -147,10 +147,9 @@ function zyx_to_xyz(rotation: readonly [number, number, number]): [number, numbe
         'ZYX'
     );
 
-    // Reorder to XYZ
     euler.reorder('XYZ');
 
-    // Access properties directly - toArray() returns [x, y, z, order] with 4 elements
+    // Use properties instead of toArray() (which includes order as 4th element)
     return [
         THREE.MathUtils.radToDeg(euler.x),
         THREE.MathUtils.radToDeg(euler.y),

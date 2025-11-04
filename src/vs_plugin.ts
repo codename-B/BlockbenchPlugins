@@ -186,10 +186,9 @@ BBPlugin.register('vs_plugin', {
             if (!Project) return;
             if (Project.format && Project.format.id === 'formatVS') return;
             if (Project.vsFormatConverted) {
-                // Already converted, just switch format and update Three.js euler order
+                // File already converted, just set format and display order
                 Project.format = formatVS;
 
-                // Set Three.js euler order on all meshes
                 for (const group of Group.all) {
                     if (group.mesh && group.mesh.rotation) {
                         group.mesh.rotation.order = 'XYZ';
@@ -210,7 +209,7 @@ BBPlugin.register('vs_plugin', {
             const old_format = Project.format?.id || 'unknown';
             const old_euler_order = Project.format?.euler_order || 'ZYX';
 
-            // Convert rotation VALUES from ZYX to XYZ for correct export
+            // Convert rotation values for VS export
             if (old_euler_order !== 'XYZ') {
                 for (const group of Group.all) {
                     if (group.rotation && (group.rotation[0] !== 0 || group.rotation[1] !== 0 || group.rotation[2] !== 0)) {
@@ -229,11 +228,11 @@ BBPlugin.register('vs_plugin', {
                 }
             }
 
-            // Switch format (this changes how Blockbench interprets rotations)
+            // Switch to VS format
             Project.format = formatVS;
             Project.vsFormatConverted = true;
 
-            // Change Three.js euler order on all meshes for correct display
+            // Update mesh display order
             for (const group of Group.all) {
                 if (group.mesh && group.mesh.rotation) {
                     group.mesh.rotation.order = 'XYZ';
