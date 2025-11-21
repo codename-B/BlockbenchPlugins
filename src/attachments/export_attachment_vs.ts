@@ -37,11 +37,18 @@ function populateTexturesFromProject(data: any) {
 
 /**
  * Determines the correct step-parent bone name for a given attachment group.
- * Uses the configurable attachment stepParent mappings from settings.
+ * First checks if the group has an explicit stepParentName property set,
+ * then falls back to using the configurable attachment stepParent mappings from settings.
  * @param {Group} group - The attachment group from Blockbench.
  * @returns {string|null} The name of the parent bone, or null if no match is found.
  */
 function getStepParentName(group: Group): string | null {
+    // First, check if the group has an explicit stepParentName property set
+    if (group.stepParentName && group.stepParentName.trim() !== '') {
+        console.log(`[getStepParentName] Using explicit stepParentName property: "${group.stepParentName}"`);
+        return group.stepParentName;
+    }
+
     const { name } = group;
     const lowerName = name.toLowerCase();
 

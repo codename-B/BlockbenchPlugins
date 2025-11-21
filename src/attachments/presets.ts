@@ -29,7 +29,10 @@ export const GLINT_PRESET: AttachmentPreset = {
         'Earring',
         'Ears',
         'FaceItem',
-        'Hair'
+        'Face',
+        'Hair Base',
+        'Hair Extra',
+        'Hair Face'
     ]
 };
 
@@ -44,6 +47,9 @@ export const VINTAGE_STORY_PRESET: AttachmentPreset = {
         'Arm',
         'Emblem',
         'Face',
+        'Ears',
+        'Hair',
+        'Nose',
         'Foot',
         'Hand',
         'Head',
@@ -100,7 +106,10 @@ const PATH_TO_SLOT_MAPPINGS: { [key: string]: string } = {
     'earring': 'Earring',
     'ears': 'Ears',
     'faceitem': 'FaceItem',
-    'hair': 'Hair',
+    'hair': 'Hair Base',
+    'hair-base': 'Hair Base',
+    'hair-extra': 'Hair Extra',
+    'hair-face': 'Hair Face',
 };
 
 /**

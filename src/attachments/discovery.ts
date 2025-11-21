@@ -16,22 +16,23 @@ export interface IAttachmentSection {
 export function findAttachments(): IAttachmentSection[] {
   // console.log('🔍 Starting attachment discovery (native nodes)...');
 
-  // Get the active slot names based on current preset
-  const activeSlotNames = getActiveSlotNames();
+  const results: IAttachmentSection[] = [];
+  const slotMap: { [key: string]: IAttachmentSection } = {};
 
-  // Prepare result buckets
-  const results: IAttachmentSection[] = activeSlotNames.map(slot => ({ slot, elements: [] }));
-
-  // Simple helper to get bucket by slot
-  const bucketFor = (slot: string) => results.find(r => r.slot === slot);
+  function getOrCreateBucket(slot: string): IAttachmentSection {
+    if (!slotMap[slot]) {
+      const newSection: IAttachmentSection = { slot, elements: [] };
+      slotMap[slot] = newSection;
+      results.push(newSection);
+    }
+    return slotMap[slot];
+  }
 
   function walk(node: any) {
     // Check if this element has an explicit clothingSlot property
     if ((node instanceof Group || node instanceof Cube) && node.clothingSlot && node.clothingSlot.trim() !== '') {
-      const bucket = bucketFor(node.clothingSlot);
-      if (bucket) {
-        bucket.elements.push(node);
-      }
+      const bucket = getOrCreateBucket(node.clothingSlot);
+      bucket.elements.push(node);
     }
 
     // Always descend to find nested clothing items
@@ -41,6 +42,9 @@ export function findAttachments(): IAttachmentSection[] {
   }
 
   (Outliner.root || []).forEach(walk);
+
+  // Sort results to have a consistent order
+  results.sort((a, b) => a.slot.localeCompare(b.slot));
 
   return results;
 }

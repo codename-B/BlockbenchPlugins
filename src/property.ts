@@ -10,126 +10,74 @@ export const VS_PROJECT_PROPS = [
 ];
 
 export const VS_GROUP_PROPS = [
-    new Property(Group, "string", "stepParentName",
-        {
-            default: '',
-            //@ts-expect-error: missing types
-            inputs: {
-                element_panel: {
-                    input: {
-                        label: "Step Parent",
-                        type: "text",
-                        value(element: any) {
-                            return element.stepParentName || '';
-                        }
-                    },
-                    onChange() {
-                        Canvas.updateAllBones();
-                        Canvas.updateAllPositions();
-                    },
+    new Property(Group, "string", "stepParentName", {
+        default: '',
+        label: "Step Parent",
+        exposed: true,
+        onChange() {
+            Canvas.updateAllBones();
+            Canvas.updateAllPositions();
+        },
+    }),
+    new Property(Group, "string", "clothingSlot", {
+        default: '',
+        label: "Clothing Slot",
+        exposed: true,
+        options: () => {
+            const { getActiveSlotNames } = require('./attachments/presets');
+            const slots = getActiveSlotNames();
+            const options: {[key: string]: string} = { '': 'None' };
+            slots.forEach((slot: string) => {
+                options[slot] = slot;
+            });
+            return options;
+        },
+        onChange() {
+            try {
+                if ((Interface as any).Panels?.attachments_panel?.vue) {
+                    (Interface as any).Panels.attachments_panel.vue.updateAttachments();
                 }
+            } catch (e) {
+                console.warn('Could not refresh attachments panel:', e);
             }
-        }
-    ),
-    new Property(Group, "string", "clothingSlot",
-        {
-            default: '',
-            //@ts-expect-error: missing types
-            inputs: {
-                element_panel: {
-                    input: {
-                        label: "Clothing Slot",
-                        type: "select",
-                        value(element: any) {
-                            return element.clothingSlot || '';
-                        },
-                        options() {
-                            // Import here to avoid circular dependency
-                            const { getActiveSlotNames } = require('./attachments/presets');
-                            const slots = getActiveSlotNames();
-                            const options: {[key: string]: string} = { '': 'None' };
-                            slots.forEach((slot: string) => {
-                                options[slot] = slot;
-                            });
-                            return options;
-                        }
-                    },
-                    onChange() {
-                        // Refresh attachments panel when clothing slot changes
-                        try {
-                            if ((Interface as any).Panels?.attachments_panel?.vue) {
-                                (Interface as any).Panels.attachments_panel.vue.updateAttachments();
-                            }
-                        } catch (e) {
-                            console.warn('Could not refresh attachments panel:', e);
-                        }
-                    },
-                }
-            }
-        }
-    ),
+        },
+    }),
 ];
 new Property(Group, "boolean", "backdrop");
 
 export const VS_CUBE_PROPS = [
-    new Property(Cube, "string", "stepParentName",
-        {
-            default: '',
-            //@ts-expect-error: missing types
-            inputs: {
-                element_panel: {
-                    input: {
-                        label: "Step Parent",
-                        type: "text",
-                        value(element: any) {
-                            return element.stepParentName || '';
-                        }
-                    },
-                    onChange() {
-                        Canvas.updateAllBones();
-                        Canvas.updateAllPositions();
-                    },
+    new Property(Cube, "string", "stepParentName", {
+        default: '',
+        label: "Step Parent",
+        exposed: true,
+        onChange() {
+            Canvas.updateAllBones();
+            Canvas.updateAllPositions();
+        },
+    }),
+    new Property(Cube, "string", "clothingSlot", {
+        default: '',
+        label: "Clothing Slot",
+        exposed: true,
+        options: () => {
+            const { getActiveSlotNames } = require('./attachments/presets');
+            const slots = getActiveSlotNames();
+            const options: {[key: string]: string} = { '': 'None' };
+            slots.forEach((slot: string) => {
+                options[slot] = slot;
+            });
+            return options;
+        },
+        onChange() {
+            try {
+                if ((Interface as any).Panels?.attachments_panel?.vue) {
+                    (Interface as any).Panels.attachments_panel.vue.updateAttachments();
                 }
+            } catch (e) {
+                console.warn('Could not refresh attachments panel:', e);
             }
-        }
-    ),
-    new Property(Cube, "string", "clothingSlot",
-        {
-            default: '',
-            //@ts-expect-error: missing types
-            inputs: {
-                element_panel: {
-                    input: {
-                        label: "Clothing Slot",
-                        type: "select",
-                        value(element: any) {
-                            return element.clothingSlot || 'None';
-                        },
-                        options() {
-                            // Import here to avoid circular dependency
-                            const { getActiveSlotNames } = require('./attachments/presets');
-                            const slots = getActiveSlotNames();
-                            const options: {[key: string]: string} = { '': 'None' };
-                            slots.forEach((slot: string) => {
-                                options[slot] = slot;
-                            });
-                            return options;
-                        }
-                    },
-                    onChange() {
-                        // Refresh attachments panel when clothing slot changes
-                        try {
-                            if ((Interface as any).Panels?.attachments_panel?.vue) {
-                                (Interface as any).Panels.attachments_panel.vue.updateAttachments();
-                            }
-                        } catch (e) {
-                            console.warn('Could not refresh attachments panel:', e);
-                        }
-                    },
-                }
-            }
-        }
-    ),
+        },
+    }),
     new Property(Cube, "string", "climateColorMap"),
     new Property(Cube, "boolean", "gradientShade"),
     new Property(Cube, "number", "renderPass"),

@@ -1,10 +1,10 @@
 import { createExportCodec } from './codec';
-import { codecVS } from '../codec';
 import { import_model } from '../import_model';
 import { VS_Shape } from '../vs_shape_def';
 import * as util from '../util';
 declare var Action: any;
 declare var Group: any;
+declare var Cube: any;
 declare var Outliner: any;
 declare var Undo: any;
 declare var Canvas: any;
@@ -73,6 +73,35 @@ function findGroupByName(name: string, elements: any[]): Group | null {
         }
     }
     return null;
+}
+
+/**
+ * Recursively finds ALL groups matching a name within a given array of elements.
+ * Case-insensitive comparison.
+ * @param {string} name The name of the groups to find.
+ * @param {Array<object>} elements The array/tree to search through (e.g., Outliner.root).
+ * @returns {Group[]} Array of all matching groups.
+ */
+function findAllGroupsByName(name: string, elements: any[]): Group[] {
+    const target = (name || '').toLowerCase();
+    if (!target) return [];
+    const results: Group[] = [];
+
+    function search(elems: any[]) {
+        for (const element of elems) {
+            if (element instanceof Group) {
+                if ((element.name || '').toLowerCase() === target) {
+                    results.push(element);
+                }
+                if (element.children && element.children.length) {
+                    search(element.children);
+                }
+            }
+        }
+    }
+
+    search(elements);
+    return results;
 }
 
 /**
@@ -157,63 +186,9 @@ export function createActions() {
 
                 // Give Blockbench a tick to settle the outliner
                 setTimeout(() => {
-                    const elementsAfter = new Set([...Group.all, ...Cube.all]);
-                    const newElements = [...elementsAfter].filter(e => !elementsBefore.has(e));
-
-                    // Step 1: Reparent elements based on stepParentName
-                    newElements.forEach(element => {
-                        const stepParentName = element.stepParentName?.trim();
-                        if (stepParentName) {
-                            let parentGroup = findGroupByName(stepParentName, Outliner.root);
-                            if (!parentGroup) {
-                                parentGroup = new Group({ name: stepParentName }).addTo().init();
-                                console.log(`[Import BB] Created missing stepParent group: "${stepParentName}"`);
-                            }
-                            if (parentGroup && parentGroup !== element && !(element instanceof Group && isDescendantOf(parentGroup, element))) {
-                                element.addTo(parentGroup);
-                                console.log(`[Import BB] Reparented "${element.name}" under stepParent "${stepParentName}"`);
-                            }
-                        }
-                    });
-
-                    // Step 2: Handle renamed duplicates
-                    const groupsToDelete: Group[] = [];
-                    const updatedGroups = collectGroupsDepthFirst(Outliner.root);
-                    updatedGroups.forEach(group => {
-                        const gname = group.name || '';
-                        const baseName = stripNumericSuffix(gname);
-                        if (baseName !== gname && baseName) {
-                            const originalGroup = findGroupByName(baseName, Outliner.root);
-                            if (originalGroup && originalGroup !== group) {
-                                [...group.children].forEach(child => child.addTo(originalGroup));
-                                groupsToDelete.push(group);
-                            }
-                        }
-                    });
-                    groupsToDelete.forEach(group => group.remove());
-
-                    // Step 3: Determine and apply a single master clothing slot
-                    const { inferClothingSlotFromPath } = require('./presets');
-                    const masterClothingSlot = inferClothingSlotFromPath(files[0].path) || 'Unknown';
-                    
-                    if (masterClothingSlot) {
-                        console.log(`[Import BB] Applying master clothing slot "${masterClothingSlot}" to all new elements.`);
-                        function applySlotRecursive(element: any, slot: string) {
-                            if (element instanceof Group || element instanceof Cube) {
-                                element.clothingSlot = slot;
-                            }
-                            if (element.children) {
-                                element.children.forEach(child => applySlotRecursive(child, slot));
-                            }
-                        }
-
-                        newElements.forEach(element => applySlotRecursive(element, masterClothingSlot));
-                    }
-                    
-                    Undo.finishEdit('Import and parent attachment');
-                    Canvas.updateAll();
-                    updateSelection?.();
-                }, 100);            });
+                    processImportedAttachments(elementsBefore, files[0].path, 'Import BB');
+                }, 100);
+            });
         }
     });
 
@@ -267,62 +242,7 @@ export function createActions() {
 
                 // Give Blockbench a tick to settle the outliner
                 setTimeout(() => {
-                    const elementsAfter = new Set([...Group.all, ...Cube.all]);
-                    const newElements = [...elementsAfter].filter(e => !elementsBefore.has(e));
-
-                    // Step 1: Reparent elements based on stepParentName
-                    newElements.forEach(element => {
-                        const stepParentName = element.stepParentName?.trim();
-                        if (stepParentName) {
-                            let parentGroup = findGroupByName(stepParentName, Outliner.root);
-                            if (!parentGroup) {
-                                parentGroup = new Group({ name: stepParentName }).addTo().init();
-                                console.log(`[Import VS] Created missing stepParent group: "${stepParentName}"`);
-                            }
-                            if (parentGroup && parentGroup !== element && !(element instanceof Group && isDescendantOf(parentGroup, element))) {
-                                element.addTo(parentGroup);
-                                console.log(`[Import VS] Reparented "${element.name}" under stepParent "${stepParentName}"`);
-                            }
-                        }
-                    });
-
-                    // Step 2: Handle renamed duplicates
-                    const groupsToDelete: Group[] = [];
-                    const updatedGroups = collectGroupsDepthFirst(Outliner.root);
-                    updatedGroups.forEach(group => {
-                        const gname = group.name || '';
-                        const baseName = stripNumericSuffix(gname);
-                        if (baseName !== gname && baseName) {
-                            const originalGroup = findGroupByName(baseName, Outliner.root);
-                            if (originalGroup && originalGroup !== group) {
-                                [...group.children].forEach(child => child.addTo(originalGroup));
-                                groupsToDelete.push(group);
-                            }
-                        }
-                    });
-                    groupsToDelete.forEach(group => group.remove());
-
-                    // Step 3: Determine and apply a single master clothing slot
-                    const { inferClothingSlotFromPath } = require('./presets');
-                    const masterClothingSlot = inferClothingSlotFromPath(files[0].path) || 'Unknown';
-                    
-                    if (masterClothingSlot) {
-                        console.log(`[Import VS] Applying master clothing slot "${masterClothingSlot}" to all new elements.`);
-                        function applySlotRecursive(element: any, slot: string) {
-                            if (element instanceof Group || element instanceof Cube) {
-                                element.clothingSlot = slot;
-                            }
-                            if (element.children) {
-                                element.children.forEach(child => applySlotRecursive(child, slot));
-                            }
-                        }
-
-                        newElements.forEach(element => applySlotRecursive(element, masterClothingSlot));
-                    }
-                    
-                    Undo.finishEdit('Import and parent attachment');
-                    Canvas.updateAll();
-                    updateSelection?.();
+                    processImportedAttachments(elementsBefore, files[0].path, 'Import VS');
                 }, 100);
             });
         }
@@ -345,5 +265,116 @@ function isDescendantOf(node: any, possibleAncestor: any): boolean {
         current = current.parent;
     }
     return false;
+}
+
+/**
+ * Shared post-import processing for both BB and VS attachment imports.
+ * Handles reparenting, duplicate merging, clothing slot assignment, and stepParent inference.
+ * @param elementsBefore Set of elements before import
+ * @param filePath Path to the first imported file (for slot inference)
+ * @param logPrefix Prefix for console log messages (e.g., "Import BB" or "Import VS")
+ */
+function processImportedAttachments(elementsBefore: Set<any>, filePath: string, logPrefix: string) {
+    const elementsAfter = new Set([...Group.all, ...Cube.all]);
+    const newElements = [...elementsAfter].filter(e => !elementsBefore.has(e));
+    const newElementsSet = new Set(newElements);
+
+    // Step 1: Reparent elements based on stepParentName, then CLEAR stepParentName
+    // We clear it after reparenting so the mesh-level system in nodePreviewControllerMod.ts
+    // doesn't also try to handle parenting (which would cause THREE.js conflicts)
+    console.log(`[${logPrefix}] Processing ${newElements.length} new elements for reparenting`);
+    newElements.forEach(element => {
+        const stepParentName = element.stepParentName?.trim();
+        if (stepParentName) {
+            // Find all groups with this name
+            const allMatches = findAllGroupsByName(stepParentName, Outliner.root);
+
+            // Prefer pre-existing groups over newly imported ones
+            let parentGroup = allMatches.find(g => !newElementsSet.has(g)) || null;
+
+            if (!parentGroup && allMatches.length === 0) {
+                // No group with this name exists at all - create one
+                parentGroup = new Group({ name: stepParentName }).addTo().init();
+                console.log(`[${logPrefix}] Created missing stepParent group: "${stepParentName}"`);
+            }
+
+            if (parentGroup && parentGroup !== element && !(element instanceof Group && isDescendantOf(parentGroup, element))) {
+                try {
+                    // Only do outliner reparenting - keep stepParentName intact for mesh positioning
+                    // The nodePreviewControllerMod.ts handles mesh positioning based on stepParentName
+                    element.addTo(parentGroup);
+                    console.log(`[${logPrefix}] Reparented "${element.name}" under "${stepParentName}" in outliner (keeping stepParentName for mesh positioning)`);
+                } catch (e) {
+                    console.error(`[${logPrefix}] Failed to reparent "${element.name}" to "${stepParentName}":`, e);
+                }
+            }
+        }
+    });
+
+    // Step 2: Handle renamed duplicates - DISABLED for debugging
+    // TODO: Re-enable once THREE.js self-reference issue is resolved
+    /*
+    const groupsToDelete: Group[] = [];
+    const updatedGroups = collectGroupsDepthFirst(Outliner.root);
+    updatedGroups.forEach(group => {
+        const gname = group.name || '';
+        const baseName = stripNumericSuffix(gname);
+        if (baseName !== gname && baseName) {
+            const originalGroup = findGroupByName(baseName, Outliner.root);
+            if (originalGroup && originalGroup !== group) {
+                [...group.children].forEach(child => {
+                    // Safety checks to prevent circular references
+                    if (child === originalGroup || child.uuid === originalGroup.uuid) {
+                        console.warn(`[${logPrefix}] Skipping move - child "${child.name}" is the target group`);
+                        return;
+                    }
+                    if (child.parent === originalGroup) {
+                        console.warn(`[${logPrefix}] Skipping move - child "${child.name}" already under "${originalGroup.name}"`);
+                        return;
+                    }
+                    if (isDescendantOf(originalGroup, child)) {
+                        console.warn(`[${logPrefix}] Skipping move - "${originalGroup.name}" is descendant of "${child.name}"`);
+                        return;
+                    }
+                    try {
+                        child.addTo(originalGroup);
+                    } catch (e) {
+                        console.error(`[${logPrefix}] Failed to move "${child.name}" to "${originalGroup.name}":`, e);
+                    }
+                });
+                groupsToDelete.push(group);
+            }
+        }
+    });
+    groupsToDelete.forEach(group => group.remove());
+    */
+
+    // Step 3: Determine and apply a single master clothing slot
+    // Only apply to elements that don't already have a clothing slot set
+    const { inferClothingSlotFromPath } = require('./presets');
+    const masterClothingSlot = inferClothingSlotFromPath(filePath) || 'Unknown';
+
+    if (masterClothingSlot) {
+        console.log(`[${logPrefix}] Applying master clothing slot "${masterClothingSlot}" to elements without a slot.`);
+        function applySlotRecursive(element: any, slot: string) {
+            if (element instanceof Group || element instanceof Cube) {
+                // Only set if not already set
+                if (!element.clothingSlot || element.clothingSlot.trim() === '') {
+                    element.clothingSlot = slot;
+                }
+            }
+            if (element.children) {
+                element.children.forEach((child: any) => applySlotRecursive(child, slot));
+            }
+        }
+        newElements.forEach(element => applySlotRecursive(element, masterClothingSlot));
+    }
+
+    // Step 4: Skip auto-setting stepParentName - we now use outliner hierarchy instead
+    // Setting stepParentName would trigger the mesh-level parenting system which conflicts
+
+    Undo.finishEdit('Import and parent attachment');
+    Canvas.updateAll();
+    updateSelection?.();
 }
 

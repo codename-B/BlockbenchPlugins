@@ -14,6 +14,21 @@ import { deleteSection } from './delete_section';
 import { findAttachments } from './discovery';
 
 /**
+ * Creates a debounced function that delays invoking the provided function
+ * until after the specified wait time has elapsed since the last call.
+ * @param fn The function to debounce.
+ * @param wait The debounce delay in milliseconds.
+ * @returns The debounced function.
+ */
+function debounce<T extends (...args: any[]) => any>(fn: T, wait: number): T {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return ((...args: any[]) => {
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), wait);
+    }) as T;
+}
+
+/**
  * Recursively gets all elements within a group or a cube.
  * @param {Group | Cube} element The element to traverse.
  * @returns {Array<object>} A flat array of all elements.
@@ -178,7 +193,7 @@ const vuePanel = {
          * @param {object} node The node to start traversal from.
          * @param {function} callback The function to apply to each node.
          */
-        _walk(node: any, callback: (n: any) => {}) {
+        _walk(node: any, callback: (n: any) => void) {
             callback(node);
             if (node instanceof Group && Array.isArray(node.children)) {
                 node.children.forEach(child => (this as any)._walk(child, callback));
@@ -210,8 +225,9 @@ const vuePanel = {
         }
     },
     mounted() {
-        (this as any).refresh = () => (this as any).updateAttachments();
-        (this as any).refresh();
+        // Debounce refresh calls to avoid unnecessary updates when multiple events fire
+        (this as any).refresh = debounce(() => (this as any).updateAttachments(), 50);
+        (this as any).updateAttachments(); // Initial load without debounce
 
         (this as any)._bbListeners = [
             ['update_outliner', (this as any).refresh],
@@ -256,9 +272,6 @@ export function createAttachmentsPanel(actions: any) {
         toolbar.add(actions.importVS);
     }
 
-    console.log('Toolbar created:', toolbar);
-    console.log('Toolbar children after add:', toolbar.children);
-
     const panel = new Panel('attachments_panel', {
         name: 'Attachments',
         icon: 'attach_file',
@@ -274,8 +287,6 @@ export function createAttachmentsPanel(actions: any) {
 
     // Store reference in Interface.Panels for easy access
     Interface.Panels.attachments_panel = panel;
-
-    console.log('Attachments panel created:', panel);
 
     return panel;
 }
