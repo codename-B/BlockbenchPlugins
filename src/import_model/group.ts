@@ -28,11 +28,13 @@ export function process_group(parent: Group | null, object_space_pos: [number,nu
 
     for(const prop of VS_GROUP_PROPS) {
         const prop_name = prop.name;
-        group[prop_name] = vsElement[prop_name];
+        if (vsElement[prop_name] !== undefined) {
+            group[prop_name] = vsElement[prop_name];
+        }
     }
 
     // If this is a top-level group with stepParentName and no clothingSlot set, infer from path
-    if (vsElement.stepParentName && !(vsElement as any).clothingSlot && filePath && !parent) {
+    if (vsElement.stepParentName && !group.clothingSlot && filePath && !parent) {
         const inferredSlot = getActiveSlotNames().includes(vsElement.stepParentName)
             ? vsElement.stepParentName
             : require('../attachments/presets').inferClothingSlotFromPath(filePath);
@@ -44,14 +46,7 @@ export function process_group(parent: Group | null, object_space_pos: [number,nu
     }
 
     group.addTo(parent ? parent : undefined).init();
-
-    if(group.stepParentName && group.stepParentName != "") {
-        const step_parent = Cube.all.find(c => c.name === `${group.stepParentName}_geo`);
-        if(step_parent) {
-            step_parent.mesh.add(group.mesh);
-        }
-    }
-
+    
     // Process attachment points as locators
     if (vsElement.attachmentpoints && vsElement.attachmentpoints.length > 0) {
         process_attachment_points(group, object_space_pos, vsElement.attachmentpoints, asBackdrop);

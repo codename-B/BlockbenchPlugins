@@ -19,6 +19,9 @@ export const VS_GROUP_PROPS = [
                     input: {
                         label: "Step Parent",
                         type: "text",
+                        value(element: any) {
+                            return element.stepParentName || '';
+                        }
                     },
                     onChange() {
                         Canvas.updateAllBones();
@@ -37,6 +40,9 @@ export const VS_GROUP_PROPS = [
                     input: {
                         label: "Clothing Slot",
                         type: "select",
+                        value(element: any) {
+                            return element.clothingSlot || '';
+                        },
                         options() {
                             // Import here to avoid circular dependency
                             const { getActiveSlotNames } = require('./attachments/presets');
@@ -75,6 +81,9 @@ export const VS_CUBE_PROPS = [
                     input: {
                         label: "Step Parent",
                         type: "text",
+                        value(element: any) {
+                            return element.stepParentName || '';
+                        }
                     },
                     onChange() {
                         Canvas.updateAllBones();
@@ -93,6 +102,9 @@ export const VS_CUBE_PROPS = [
                     input: {
                         label: "Clothing Slot",
                         type: "select",
+                        value(element: any) {
+                            return element.clothingSlot || 'None';
+                        },
                         options() {
                             // Import here to avoid circular dependency
                             const { getActiveSlotNames } = require('./attachments/presets');
