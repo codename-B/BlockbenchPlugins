@@ -3,6 +3,7 @@ declare var Toolbar: any;
 declare var Interface: any;
 declare var Outliner: any;
 declare var Group: any;
+declare var Cube: any;
 declare var Canvas: any;
 declare var Blockbench: any;
 declare var updateSelection: any;
@@ -13,11 +14,11 @@ import { deleteSection } from './delete_section';
 import { findAttachments } from './discovery';
 
 /**
- * Recursively gets all elements within a group.
- * @param {Group} group The group to traverse.
- * @returns {Array<object>} A flat array of all elements in the group.
+ * Recursively gets all elements within a group or a cube.
+ * @param {Group | Cube} element The element to traverse.
+ * @returns {Array<object>} A flat array of all elements.
  */
-function getAllElementsInGroup(group: any) {
+function getAllChildElements(element: any) {
     const elements: any[] = [];
     function traverse(node: any) {
         elements.push(node);
@@ -25,7 +26,7 @@ function getAllElementsInGroup(group: any) {
             node.children.forEach(traverse);
         }
     }
-    traverse(group);
+    traverse(element);
     return elements;
 }
 
@@ -45,40 +46,40 @@ function updateOutlinerSelection(elements: any[]) {
 const vuePanel = {
     template: `
         <div>
-            <div v-if="sections.every(s => s.groups.length === 0)" class="panel_placeholder">
+            <div v-if="sections.every(s => s.elements.length === 0)" class="panel_placeholder">
                 <i class="material-icons">folder</i>
                 <p>No attachments found in model.</p>
-                <p>Create a group with a name containing one of the slot keywords (e.g., "Outerwear", "Top", "Boot").</p>
+                <p>Assign a "Clothing Slot" to a group or cube in the element panel.</p>
             </div>
             <div v-else>
-                <div v-for="section in sections.filter(s => s.groups.length > 0)" :key="section.slot" class="attachment-section">
+                <div v-for="section in sections.filter(s => s.elements.length > 0)" :key="section.slot" class="attachment-section">
                     <h2 @click="toggleSection(section.slot)" :class="{ collapsed: !isSectionOpen(section.slot) }">
                         <i class="material-icons expand_icon">
                         {{ isSectionOpen(section.slot) ? 'arrow_drop_down' : 'arrow_right' }}
                         </i>
                         {{ section.slot }}
-                        <span class="attachment-count">{{ section.groups.length }}</span>
+                        <span class="attachment-count">{{ section.elements.length }}</span>
                         
                         <span class="section-buttons">
-                            <i class="material-icons" @click.stop="selectSection(section.groups)" title="Select all elements in this section">select_all</i>
-                            <i class="material-icons" @click.stop="toggleVisibility(section.groups, !getSectionVisibility(section.groups))" :title="getSectionVisibility(section.groups) ? 'Hide all elements in this section' : 'Show all elements in this section'">
-                                {{ getSectionVisibility(section.groups) ? 'visibility' : 'visibility_off' }}
+                            <i class="material-icons" @click.stop="selectSection(section.elements)" title="Select all elements in this section">select_all</i>
+                            <i class="material-icons" @click.stop="toggleVisibility(section.elements, !getSectionVisibility(section.elements))" :title="getSectionVisibility(section.elements) ? 'Hide all elements in this section' : 'Show all elements in this section'">
+                                {{ getSectionVisibility(section.elements) ? 'visibility' : 'visibility_off' }}
                             </i>
-                            <i class="material-icons" @click.stop="exportBB(section.groups)" title="Export to .bbmodel">save</i>
-                            <i class="material-icons" @click.stop="exportVS(section.groups)" title="Export as VS .json">file_download</i>
-                            <i class="material-icons" @click.stop="deleteSection(section.groups)" title="Delete all elements in this section">delete</i>
+                            <i class="material-icons" @click.stop="exportBB(section.elements)" title="Export to .bbmodel">save</i>
+                            <i class="material-icons" @click.stop="exportVS(section.elements)" title="Export as VS .json">file_download</i>
+                            <i class="material-icons" @click.stop="deleteSection(section.elements)" title="Delete all elements in this section">delete</i>
                         </span>
                     </h2>
                     <ul v-if="isSectionOpen(section.slot)">
-                        <li v-for="group in section.groups" 
-                            :key="group.uuid"
-                            :class="{ selected: isSelected(group) }"
+                        <li v-for="element in section.elements" 
+                            :key="element.uuid"
+                            :class="{ selected: isSelected(element) }"
                             class="outliner_object"
-                            @click="selectGroup(group)">
+                            @click="selectElement(element)">
                             
                             <span class="outliner_object_name">
-                                <i class="icon material-icons">folder</i>
-                                {{ group.name }}
+                                <i class="icon material-icons">{{ getIcon(element) }}</i>
+                                {{ element.name }}
                             </span>
                         </li>
                     </ul>
@@ -92,25 +93,25 @@ const vuePanel = {
     }),
     methods: {
         /**
-         * Exports the given groups to a .bbmodel file.
-         * @param {Array<Group>} groups The groups to export.
+         * Exports the given elements to a .bbmodel file.
+         * @param {Array<Group | Cube>} elements The elements to export.
          */
-        exportBB(groups: any[]) {
-            exportAttachmentsBB(groups);
+        exportBB(elements: any[]) {
+            exportAttachmentsBB(elements);
         },
         /**
-         * Exports the given groups to a Vintage Story .json file.
-         * @param {Array<Group>} groups The groups to export.
+         * Exports the given elements to a Vintage Story .json file.
+         * @param {Array<Group | Cube>} elements The elements to export.
          */
-        exportVS(groups: any[]) {
-            exportAttachmentsVS(groups);
+        exportVS(elements: any[]) {
+            exportAttachmentsVS(elements);
         },
         /**
-         * Deletes the given groups from the project.
-         * @param {Array<Group>} groups The groups to delete.
+         * Deletes the given elements from the project.
+         * @param {Array<Group | Cube>} elements The elements to delete.
          */
-        deleteSection(groups: any[]) {
-            deleteSection(groups);
+        deleteSection(elements: any[]) {
+            deleteSection(elements);
         },
         /**
          * Updates the list of attachments by calling the discovery function.
@@ -139,29 +140,29 @@ const vuePanel = {
             return (this as any).openSections.includes(slot);
         },
         /**
-         * Selects all elements within a group.
-         * @param {Group} group The group to select.
+         * Selects an element and all its children.
+         * @param {Group | Cube} element The element to select.
          */
-        selectGroup(group: any) {
-            const allElements = getAllElementsInGroup(group);
-            updateOutlinerSelection(allElements);
+        selectElement(element: any) {
+            const allChildren = getAllChildElements(element);
+            updateOutlinerSelection(allChildren);
         },
         /**
-         * Checks if a group is selected in the outliner.
-         * @param {Group} group The group to check.
-         * @returns {boolean} True if the group is selected, false otherwise.
+         * Checks if an element is selected in the outliner.
+         * @param {Group | Cube} element The element to check.
+         * @returns {boolean} True if the element is selected, false otherwise.
          */
-        isSelected(group: any) {
-            return Outliner.selected.includes(group);
+        isSelected(element: any) {
+            return Outliner.selected.includes(element);
         },
         /**
-         * Toggles the visibility of all elements in the given groups.
-         * @param {Array<Group>} groups The groups to toggle visibility for.
+         * Toggles the visibility of all given elements.
+         * @param {Array<Group | Cube>} elements The elements to toggle visibility for.
          * @param {boolean} isVisible The desired visibility state.
          */
-        toggleVisibility(groups: any[], isVisible: boolean) {
-            groups.forEach(group => {
-                (this as any)._walk(group, (node: any) => {
+        toggleVisibility(elements: any[], isVisible: boolean) {
+            elements.forEach(element => {
+                (this as any)._walk(element, (node: any) => {
                     if (typeof node.toggleVisibility === 'function') {
                         if (node.visibility !== isVisible) node.toggleVisibility(isVisible);
                     } else if ('visibility' in node) {
@@ -184,20 +185,28 @@ const vuePanel = {
             }
         },
         /**
-         * Selects all elements in all groups of a section.
-         * @param {Array<Group>} groups The groups in the section.
+         * Selects all elements in a section.
+         * @param {Array<Group | Cube>} elements The elements in the section.
          */
-        selectSection(groups: any[]) {
-            const allElements = groups.flatMap(group => getAllElementsInGroup(group));
-            updateOutlinerSelection(allElements);
+        selectSection(elements: any[]) {
+            const allChildren = elements.flatMap(element => getAllChildElements(element));
+            updateOutlinerSelection(allChildren);
         },
         /**
          * Gets the visibility state of a section.
-         * @param {Array<Group>} groups The groups in the section.
-         * @returns {boolean} True if all groups are visible, false otherwise.
+         * @param {Array<Group | Cube>} elements The elements in the section.
+         * @returns {boolean} True if all elements are visible, false otherwise.
          */
-        getSectionVisibility(groups: any[]) {
-            return groups.every(group => group.visibility);
+        getSectionVisibility(elements: any[]) {
+            return elements.every(element => element.visibility);
+        },
+        /**
+         * Gets the appropriate icon for an element.
+         * @param {Group | Cube} element The element.
+         * @returns {string} The icon name.
+         */
+        getIcon(element: any) {
+            return element instanceof Group ? 'folder' : 'widgets';
         }
     },
     mounted() {
