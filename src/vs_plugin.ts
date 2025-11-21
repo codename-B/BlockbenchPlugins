@@ -23,12 +23,16 @@ import "./mods/attachmentsMod";
 
 BBPlugin.register(PACKAGE.name, {
     title: PACKAGE.title,
-    icon: 'VS',
-    author: 'Darkluke1111, codename_B',
-    description: 'Adds support for Vintage Story',
-    version: '0.10.0',
+    icon: 'fa-cookie-bite',
+    author: PACKAGE.author.name,
+    contributors: PACKAGE.contributors.map(x => x.name),
+    description: PACKAGE.description,
+    version: PACKAGE.version,
     variant: 'desktop',
-
+    min_version: "5.0.0",
+    repository: PACKAGE.repository.url,
+    tags: ["Vintage Story"],
+    about: PACKAGE.description,
     onload() {
         events.LOAD.dispatch();
     },
