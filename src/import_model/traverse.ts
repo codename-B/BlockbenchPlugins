@@ -11,16 +11,17 @@ import { has_children, has_attachments, has_geometry, is_complex } from "../tran
  * @param object_space_pos The position in the object space.
  * @param nodes The array of Vintage Story elements to process.
  * @param asBackdrop Whether to import as a backdrop.
+ * @param filePath The path to the file being imported (for clothing slot inference)
  */
-export function traverse(parent: Group | null, object_space_pos: [number,number,number], vsElements: Array<VS_Element>, asBackdrop: boolean) {
+export function traverse(parent: Group | null, object_space_pos: [number,number,number], vsElements: Array<VS_Element>, asBackdrop: boolean, filePath?: string) {
     for (const vsElement of vsElements) {
 
         // Elements with children or attachments (but no geometry) become groups
         if(!has_geometry(vsElement) && (has_children(vsElement) || has_attachments(vsElement))) {
-            const group = process_group(parent, object_space_pos, vsElement, asBackdrop);
+            const group = process_group(parent, object_space_pos, vsElement, asBackdrop, filePath);
             // Recursively traverse child elements if they exist
             if (has_children(vsElement)) {
-                traverse(group, util.vector_add(vsElement.from, object_space_pos), vsElement.children!, asBackdrop);
+                traverse(group, util.vector_add(vsElement.from, object_space_pos), vsElement.children!, asBackdrop, filePath);
             }
         }
 
