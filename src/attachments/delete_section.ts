@@ -1,5 +1,6 @@
 declare var Group: any;
 declare var Undo: any;
+declare var Interface: any;
 
 declare function alert(message: string): void;
 declare function confirm(message: string): boolean;
@@ -15,17 +16,25 @@ export function deleteSection(groups: Group[]) {
     }
 
     const confirmed = confirm(`Are you sure you want to delete all ${groups.length} attachments in this section? This cannot be undone.`);
-    
+
     if (confirmed) {
         // Create undo point before making changes
-        Undo.initEdit({aspects: {outliner: true}});
-        
+        Undo.initEdit({ outliner: true });
+
         groups.forEach(group => {
             group.remove();
         });
-        
+
         // Finish the undo operation
         Undo.finishEdit('delete attachment section');
-        console.log(`Deleted ${groups.length} attachments.`);
+
+        // Refresh the attachments panel
+        try {
+            if (Interface?.Panels?.attachments_panel?.vue) {
+                Interface.Panels.attachments_panel.vue.updateAttachments();
+            }
+        } catch (e) {
+            // Panel may not be mounted yet, ignore
+        }
     }
 }

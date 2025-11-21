@@ -176,14 +176,22 @@ const vuePanel = {
          * @param {boolean} isVisible The desired visibility state.
          */
         toggleVisibility(elements: any[], isVisible: boolean) {
+            if (!elements || !Array.isArray(elements)) return;
+
             elements.forEach(element => {
-                (this as any)._walk(element, (node: any) => {
-                    if (typeof node.toggleVisibility === 'function') {
-                        if (node.visibility !== isVisible) node.toggleVisibility(isVisible);
-                    } else if ('visibility' in node) {
-                        node.visibility = isVisible;
-                    }
-                });
+                if (!element) return;
+                try {
+                    (this as any)._walk(element, (node: any) => {
+                        if (!node) return;
+                        if (typeof node.toggleVisibility === 'function') {
+                            if (node.visibility !== isVisible) node.toggleVisibility(isVisible);
+                        } else if ('visibility' in node) {
+                            node.visibility = isVisible;
+                        }
+                    });
+                } catch (e) {
+                    console.warn('Error toggling visibility for element:', element?.name, e);
+                }
             });
             Canvas.updateVisibility?.();
             Canvas.updateAll?.();

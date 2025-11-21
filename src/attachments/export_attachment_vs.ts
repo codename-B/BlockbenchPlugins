@@ -2,18 +2,23 @@ import { getActiveSlotNames } from './presets';
 import { traverse } from '../export_model/traverse';
 import * as props from "../property";
 import * as util from '../util';
+import { VS_Element } from '../vs_shape_def';
+
 declare var Group: any;
 declare var Texture: any;
 declare var Project: any;
 declare var OutlinerNode: any;
 declare var Settings: any;
 declare var Blockbench: any;
-import { VS_Element } from '../vs_shape_def';
 
 declare function requireNativeModule(module: string): any;
+declare function autoStringify(data: any): string;
+declare function alert(message: string): void;
+
 const fs = requireNativeModule('fs');
 
-declare function autoStringify(data: any): string;
+/** Debug flag - set to true to enable verbose logging */
+const DEBUG = false;
 
 /**
  * Populates textureSizes and textures from the current project.
@@ -45,14 +50,14 @@ function populateTexturesFromProject(data: any) {
 function getStepParentName(group: Group): string | null {
     // First, check if the group has an explicit stepParentName property set
     if (group.stepParentName && group.stepParentName.trim() !== '') {
-        console.log(`[getStepParentName] Using explicit stepParentName property: "${group.stepParentName}"`);
+        if (DEBUG) console.log(`[getStepParentName] Using explicit stepParentName property: "${group.stepParentName}"`);
         return group.stepParentName;
     }
 
     const { name } = group;
     const lowerName = name.toLowerCase();
 
-    console.log(`[getStepParentName] Checking group: "${name}"`);
+    if (DEBUG) console.log(`[getStepParentName] Checking group: "${name}"`);
 
     // Get the mappings from settings
     const mappings = Settings.get("attachment_stepparent_mappings") || {
@@ -63,7 +68,7 @@ function getStepParentName(group: Group): string | null {
     // Check for exact matches first
     if (mappings.exactMatches && mappings.exactMatches[name]) {
         const stepParent = mappings.exactMatches[name];
-        console.log(`[getStepParentName] Exact match found: "${name}" → "${stepParent}"`);
+        if (DEBUG) console.log(`[getStepParentName] Exact match found: "${name}" → "${stepParent}"`);
         return stepParent;
     }
 
@@ -75,7 +80,7 @@ function getStepParentName(group: Group): string | null {
                 // Check if there's an "endsWith" condition
                 if (pattern.endsWith) {
                     if (lowerName.endsWith(pattern.endsWith.toLowerCase())) {
-                        console.log(`[getStepParentName] Pattern match (contains="${pattern.contains}", endsWith="${pattern.endsWith}"): "${name}" → "${pattern.stepParent}"`);
+                        if (DEBUG) console.log(`[getStepParentName] Pattern match (contains="${pattern.contains}", endsWith="${pattern.endsWith}"): "${name}" → "${pattern.stepParent}"`);
                         return pattern.stepParent;
                     }
                 } else if (pattern.default) {
@@ -83,7 +88,7 @@ function getStepParentName(group: Group): string | null {
                     continue;
                 } else if (pattern.stepParent) {
                     // Simple contains match without endsWith or default
-                    console.log(`[getStepParentName] Pattern match (contains="${pattern.contains}"): "${name}" → "${pattern.stepParent}"`);
+                    if (DEBUG) console.log(`[getStepParentName] Pattern match (contains="${pattern.contains}"): "${name}" → "${pattern.stepParent}"`);
                     return pattern.stepParent;
                 }
             }
@@ -92,7 +97,7 @@ function getStepParentName(group: Group): string | null {
         // Second pass: check for default fallbacks
         for (const pattern of mappings.patternMatches) {
             if (pattern.contains && lowerName.includes(pattern.contains.toLowerCase()) && pattern.default) {
-                console.log(`[getStepParentName] Pattern default match (contains="${pattern.contains}"): "${name}" → "${pattern.default}"`);
+                if (DEBUG) console.log(`[getStepParentName] Pattern default match (contains="${pattern.contains}"): "${name}" → "${pattern.default}"`);
                 return pattern.default;
             }
         }
@@ -105,23 +110,23 @@ function getStepParentName(group: Group): string | null {
     );
 
     if (matches.length === 0) {
-        console.warn(`[getStepParentName] No slot match found for "${name}"`);
+        if (DEBUG) console.warn(`[getStepParentName] No slot match found for "${name}"`);
         return null;
     }
 
     if (matches.length > 1) {
-        console.warn(`[getStepParentName] Multiple slot matches found for "${name}": ${matches.join(', ')}`);
+        if (DEBUG) console.warn(`[getStepParentName] Multiple slot matches found for "${name}": ${matches.join(', ')}`);
     }
 
     // Pick the longest match to avoid shorter overlaps (e.g. "Top" vs "Face")
     const slot = matches.reduce((a, b) => (a.length >= b.length ? a : b));
 
-    console.log(`[getStepParentName] Using slot: "${slot}"`);
+    if (DEBUG) console.log(`[getStepParentName] Using slot: "${slot}"`);
 
     // Remove the slot suffix but keep the original casing of the prefix
     const stepParentName = name.slice(0, -slot.length);
 
-    console.log(`[getStepParentName] Derived stepParentName: "${stepParentName}"`);
+    if (DEBUG) console.log(`[getStepParentName] Derived stepParentName: "${stepParentName}"`);
 
     return stepParentName || null;
 }
@@ -146,42 +151,51 @@ export function exportAttachmentsVS(selection: Group[]) {
         animations: []
     };
 
-    // Process each attachment group with its own relative offset
-    selection.forEach(group => {
-        const stepParentName = getStepParentName(group);
-        if (stepParentName) {
-            // This property will be picked up by the processGroup function
-            (group as any).stepParentName = stepParentName;
-        } else {
-            console.warn(`Could not determine a step-parent for attachment: ${group.name}`);
-        }
+    // Track groups that had stepParentName temporarily set for cleanup
+    const modifiedGroups: Group[] = [];
 
-        // Find the parent group to make the attachment's position relative
-        const parentGroup = stepParentName ? Group.all.find(g => g.name === stepParentName) : null;
+    try {
+        // Process each attachment group with its own relative offset
+        selection.forEach(group => {
+            const originalStepParent = group.stepParentName;
+            const stepParentName = getStepParentName(group);
 
-        // Default offset, same as in the main model exporter
-        let offset: [number, number, number] = [0, 0, 0];
+            if (stepParentName) {
+                // Only modify if we're setting a new value
+                if (!originalStepParent || originalStepParent.trim() === '') {
+                    (group as any).stepParentName = stepParentName;
+                    modifiedGroups.push(group);
+                }
+            } else {
+                console.warn(`Could not determine a step-parent for attachment: ${group.name}`);
+            }
 
-        if (parentGroup) {
-            // Adjust the offset by subtracting the parent's absolute position.
-            // This makes the attachment's root position relative to its parent.
-            offset = util.vector_sub(offset, parentGroup.origin);
-        }
+            // Find the parent group to make the attachment's position relative
+            const parentGroup = stepParentName ? Group.all.find((g: any) => g.name === stepParentName) : null;
 
-        // Use the main model traversal logic to process the attachment
-        // We create a temporary array to hold the elements for this single attachment
-        const attachmentElements: VS_Element[] = [];
-        traverse(null, [group], attachmentElements, offset);
+            // Default offset, same as in the main model exporter
+            let offset: [number, number, number] = [0, 0, 0];
 
-        // Add the processed elements to the main elements array
-        data.elements.push(...attachmentElements);
-    });
+            if (parentGroup) {
+                // Adjust the offset by subtracting the parent's absolute position.
+                // This makes the attachment's root position relative to its parent.
+                offset = util.vector_sub(offset, parentGroup.origin);
+            }
 
+            // Use the main model traversal logic to process the attachment
+            // We create a temporary array to hold the elements for this single attachment
+            const attachmentElements: VS_Element[] = [];
+            traverse(null, [group], attachmentElements, offset);
 
-    // Clean up the temporarily added property to avoid side effects
-    selection.forEach(group => {
-        delete (group as any).stepParentName;
-    });
+            // Add the processed elements to the main elements array
+            data.elements.push(...attachmentElements);
+        });
+    } finally {
+        // Clean up the temporarily added property to avoid side effects
+        modifiedGroups.forEach(group => {
+            delete (group as any).stepParentName;
+        });
+    }
 
     // Prompt for save location first to check if file exists
     Blockbench.export({
@@ -205,9 +219,11 @@ export function exportAttachmentsVS(selection: Group[]) {
                         data.textures = existingData.textures;
                     }
 
-                    console.log('[VS Attachment Export] Preserved textureSizes and textures from existing file');
+                    if (DEBUG) console.log('[VS Attachment Export] Preserved textureSizes and textures from existing file');
                 } catch (e) {
                     console.error('[VS Attachment Export] Error reading existing file:', e);
+                    // Warn user about malformed JSON
+                    Blockbench.showQuickMessage('Warning: Existing file has invalid JSON. Using project textures instead.', 3000);
                     // Fall back to current project textures
                     populateTexturesFromProject(data);
                 }

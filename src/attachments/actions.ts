@@ -1,7 +1,9 @@
 import { createExportCodec } from './codec';
 import { import_model } from '../import_model';
 import { VS_Shape } from '../vs_shape_def';
+import { inferClothingSlotFromPath } from './presets';
 import * as util from '../util';
+
 declare var Action: any;
 declare var Group: any;
 declare var Cube: any;
@@ -15,6 +17,22 @@ declare var Project: any;
 
 declare function autoParseJSON(content: string): any;
 declare function updateSelection(): void;
+
+/** Debug flag - set to true to enable verbose logging */
+const DEBUG = false;
+
+/** Platform-aware path separator */
+const isWindows = typeof process !== 'undefined' && process.platform === 'win32';
+
+/**
+ * Normalizes path separators to the current platform's convention
+ * @param filePath The path to normalize
+ * @returns Path with platform-appropriate separators
+ */
+function normalizePath(filePath: string): string {
+    if (!filePath) return filePath;
+    return isWindows ? filePath.replace(/\//g, '\\') : filePath.replace(/\\/g, '/');
+}
 
 /**
  * Extracts just the filename (without extension) from a path or textureLocation
@@ -65,10 +83,12 @@ function mergeVSAttachment(content: VS_Shape, filePath?: string) {
             return false;
         }) : null;
 
-        console.log(`[Import VS] Texture "${name}" -> location: "${textureLocation}" (filename: "${locationFilename}")`);
-        console.log(`[Import VS]   existingByName: ${existingByName?.name || 'none'} (path: ${existingByName?.path || 'none'})`);
-        console.log(`[Import VS]   existingByLocation: ${existingByLocation?.name || 'none'} (path: ${existingByLocation?.path || 'none'})`);
-        console.log(`[Import VS]   existingByFilename: ${existingByFilename?.name || 'none'} (path: ${existingByFilename?.path || 'none'})`);
+        if (DEBUG) {
+            console.log(`[Import VS] Texture "${name}" -> location: "${textureLocation}" (filename: "${locationFilename}")`);
+            console.log(`[Import VS]   existingByName: ${existingByName?.name || 'none'} (path: ${existingByName?.path || 'none'})`);
+            console.log(`[Import VS]   existingByLocation: ${existingByLocation?.name || 'none'} (path: ${existingByLocation?.path || 'none'})`);
+            console.log(`[Import VS]   existingByFilename: ${existingByFilename?.name || 'none'} (path: ${existingByFilename?.path || 'none'})`);
+        }
 
         if (existingByName) {
             // Texture with this name exists - ensure it has correct textureLocation and is loaded
@@ -93,33 +113,31 @@ function mergeVSAttachment(content: VS_Shape, filePath?: string) {
         } else if (existingByLocation) {
             // No texture with this name, but we have one with matching textureLocation
             // Create a new texture entry with the imported name, using the existing texture's path
-            // Normalize path separators for cross-platform compatibility
-            const normalizedPath = existingByLocation.path?.replace(/\//g, '\\') || existingByLocation.path;
+            const texPath = normalizePath(existingByLocation.path);
             const texture = new Texture({
                 name,
-                path: normalizedPath
+                path: texPath
             }).add().load();
             texture.textureLocation = textureLocation;
             if (content.textureSizes && content.textureSizes[name]) {
                 texture.uv_width = content.textureSizes[name][0];
                 texture.uv_height = content.textureSizes[name][1];
             }
-            console.log(`[Import VS] Created texture "${name}" using path from existing texture with same location (path: ${normalizedPath})`);
+            if (DEBUG) console.log(`[Import VS] Created texture "${name}" using path from existing texture with same location (path: ${texPath})`);
         } else if (existingByFilename) {
             // No texture by name or location, but we have one with matching filename
             // Create a new texture entry with the imported name, using the existing texture's path
-            // Normalize path separators for cross-platform compatibility
-            const normalizedPath = existingByFilename.path?.replace(/\//g, '\\') || existingByFilename.path;
+            const texPath = normalizePath(existingByFilename.path);
             const texture = new Texture({
                 name,
-                path: normalizedPath
+                path: texPath
             }).add().load();
             texture.textureLocation = textureLocation;
             if (content.textureSizes && content.textureSizes[name]) {
                 texture.uv_width = content.textureSizes[name][0];
                 texture.uv_height = content.textureSizes[name][1];
             }
-            console.log(`[Import VS] Created texture "${name}" using path from existing texture with matching filename "${locationFilename}" (path: ${normalizedPath})`);
+            if (DEBUG) console.log(`[Import VS] Created texture "${name}" using path from existing texture with matching filename "${locationFilename}" (path: ${texPath})`);
         } else {
             // No matching texture found - create new one
             const texturePath = util.get_texture_location(null, textureLocation);
@@ -281,7 +299,14 @@ export function createActions() {
                 });
 
                 // Give Blockbench a tick to settle the outliner
+                // Capture project reference to check validity after timeout
+                const currentProject = Project;
                 setTimeout(() => {
+                    // Ensure project is still valid before processing
+                    if (!currentProject || Project !== currentProject) {
+                        console.warn('[Import BB] Project changed or closed, skipping post-import processing');
+                        return;
+                    }
                     processImportedAttachments(elementsBefore, files[0].path, 'Import BB');
                 }, 100);
             });
@@ -337,7 +362,14 @@ export function createActions() {
                 });
 
                 // Give Blockbench a tick to settle the outliner
+                // Capture project reference to check validity after timeout
+                const currentProject = Project;
                 setTimeout(() => {
+                    // Ensure project is still valid before processing
+                    if (!currentProject || Project !== currentProject) {
+                        console.warn('[Import VS] Project changed or closed, skipping post-import processing');
+                        return;
+                    }
                     processImportedAttachments(elementsBefore, files[0].path, 'Import VS');
                 }, 100);
             });
@@ -378,7 +410,7 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
     // Step 1: Reparent elements based on stepParentName, then CLEAR stepParentName
     // We clear it after reparenting so the mesh-level system in nodePreviewControllerMod.ts
     // doesn't also try to handle parenting (which would cause THREE.js conflicts)
-    console.log(`[${logPrefix}] Processing ${newElements.length} new elements for reparenting`);
+    if (DEBUG) console.log(`[${logPrefix}] Processing ${newElements.length} new elements for reparenting`);
     newElements.forEach(element => {
         const stepParentName = element.stepParentName?.trim();
         if (stepParentName) {
@@ -391,7 +423,7 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
             if (!parentGroup && allMatches.length === 0) {
                 // No group with this name exists at all - create one
                 parentGroup = new Group({ name: stepParentName }).addTo().init();
-                console.log(`[${logPrefix}] Created missing stepParent group: "${stepParentName}"`);
+                if (DEBUG) console.log(`[${logPrefix}] Created missing stepParent group: "${stepParentName}"`);
             }
 
             if (parentGroup && parentGroup !== element && !(element instanceof Group && isDescendantOf(parentGroup, element))) {
@@ -399,7 +431,7 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
                     // Only do outliner reparenting - keep stepParentName intact for mesh positioning
                     // The nodePreviewControllerMod.ts handles mesh positioning based on stepParentName
                     element.addTo(parentGroup);
-                    console.log(`[${logPrefix}] Reparented "${element.name}" under "${stepParentName}" in outliner (keeping stepParentName for mesh positioning)`);
+                    if (DEBUG) console.log(`[${logPrefix}] Reparented "${element.name}" under "${stepParentName}" in outliner (keeping stepParentName for mesh positioning)`);
                 } catch (e) {
                     console.error(`[${logPrefix}] Failed to reparent "${element.name}" to "${stepParentName}":`, e);
                 }
@@ -419,15 +451,15 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
                 [...group.children].forEach(child => {
                     // Safety checks to prevent circular references
                     if (child === originalGroup || child.uuid === originalGroup.uuid) {
-                        console.warn(`[${logPrefix}] Skipping move - child "${child.name}" is the target group`);
+                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - child "${child.name}" is the target group`);
                         return;
                     }
                     if (child.parent === originalGroup) {
-                        console.warn(`[${logPrefix}] Skipping move - child "${child.name}" already under "${originalGroup.name}"`);
+                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - child "${child.name}" already under "${originalGroup.name}"`);
                         return;
                     }
                     if (isDescendantOf(originalGroup, child)) {
-                        console.warn(`[${logPrefix}] Skipping move - "${originalGroup.name}" is descendant of "${child.name}"`);
+                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - "${originalGroup.name}" is descendant of "${child.name}"`);
                         return;
                     }
                     try {
@@ -444,11 +476,10 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
 
     // Step 3: Determine and apply a single master clothing slot
     // Only apply to elements that don't already have a clothing slot set
-    const { inferClothingSlotFromPath } = require('./presets');
     const masterClothingSlot = inferClothingSlotFromPath(filePath) || 'Unknown';
 
     if (masterClothingSlot) {
-        console.log(`[${logPrefix}] Applying master clothing slot "${masterClothingSlot}" to elements without a slot.`);
+        if (DEBUG) console.log(`[${logPrefix}] Applying master clothing slot "${masterClothingSlot}" to elements without a slot.`);
         function applySlotRecursive(element: any, slot: string) {
             if (element instanceof Group || element instanceof Cube) {
                 // Only set if not already set

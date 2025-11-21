@@ -76,10 +76,12 @@ export const PRESETS: { [key: string]: AttachmentPreset } = {
 };
 
 /**
- * Path segment to slot name mappings for different systems
+ * Path segment to slot name mappings for different systems.
+ * Note: Armor paths are handled separately in inferClothingSlotFromPath()
+ * before these mappings are checked.
  */
 const PATH_TO_SLOT_MAPPINGS: { [key: string]: string } = {
-    // Vintage Story paths
+    // Vintage Story clothing paths
     'upperbody': 'UpperBody',
     'upperbodyover': 'UpperBodyOver',
     'lowerbody': 'LowerBody',
@@ -92,10 +94,7 @@ const PATH_TO_SLOT_MAPPINGS: { [key: string]: string } = {
     'waist': 'Waist',
     'arm': 'Arm',
     'emblem': 'Emblem',
-
-    // Vintage Story armor (maps to body parts)
-    'body': 'UpperBody',
-    'legs': 'LowerBody',
+    'hair': 'Hair',
 
     // Glint paths
     'outerwear': 'Outerwear',
@@ -111,7 +110,6 @@ const PATH_TO_SLOT_MAPPINGS: { [key: string]: string } = {
     'earring': 'Earring',
     'ears': 'Ears',
     'faceitem': 'FaceItem',
-    'hair': 'Hair Base',
     'hair-base': 'Hair Base',
     'hair-extra': 'Hair Extra',
     'hair-face': 'Hair Face',
