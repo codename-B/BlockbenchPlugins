@@ -42,8 +42,9 @@ export const GLINT_PRESET: AttachmentPreset = {
  */
 export const VINTAGE_STORY_PRESET: AttachmentPreset = {
     name: "Vintage Story",
-    description: "Vintage Story Seraph clothing slots",
+    description: "Vintage Story Seraph clothing and armor slots",
     slots: [
+        // Clothing slots
         'Arm',
         'Emblem',
         'Face',
@@ -58,7 +59,11 @@ export const VINTAGE_STORY_PRESET: AttachmentPreset = {
         'Shoulder',
         'UpperBody',
         'UpperBodyOver',
-        'Waist'
+        'Waist',
+        // Armor slots
+        'Armor Body',
+        'Armor Head',
+        'Armor Legs'
     ]
 };
 
@@ -123,6 +128,17 @@ export function inferClothingSlotFromPath(filePath: string): string | null {
     // Normalize path separators and convert to lowercase
     const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
     const pathSegments = normalizedPath.split('/');
+
+    // Check for armor paths (e.g., .../armor/.../body.json)
+    if (pathSegments.includes('armor')) {
+        // Get the filename without extension
+        const filename = pathSegments[pathSegments.length - 1].replace(/\.[^.]+$/, '');
+
+        // Map armor filenames to slots
+        if (filename === 'body') return 'Armor Body';
+        if (filename === 'head') return 'Armor Head';
+        if (filename === 'legs') return 'Armor Legs';
+    }
 
     // Check each path segment against mappings (from most specific to least)
     for (let i = pathSegments.length - 1; i >= 0; i--) {

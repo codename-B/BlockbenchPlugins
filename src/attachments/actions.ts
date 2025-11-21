@@ -311,9 +311,7 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
         }
     });
 
-    // Step 2: Handle renamed duplicates - DISABLED for debugging
-    // TODO: Re-enable once THREE.js self-reference issue is resolved
-    /*
+    // Step 2: Handle renamed duplicates (e.g., "head2" -> merge into "head")
     const groupsToDelete: Group[] = [];
     const updatedGroups = collectGroupsDepthFirst(Outliner.root);
     updatedGroups.forEach(group => {
@@ -347,7 +345,6 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
         }
     });
     groupsToDelete.forEach(group => group.remove());
-    */
 
     // Step 3: Determine and apply a single master clothing slot
     // Only apply to elements that don't already have a clothing slot set
