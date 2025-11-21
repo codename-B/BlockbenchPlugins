@@ -17,22 +17,118 @@ declare function autoParseJSON(content: string): any;
 declare function updateSelection(): void;
 
 /**
+ * Extracts just the filename (without extension) from a path or textureLocation
+ * @param pathOrLocation A file path or textureLocation string
+ * @returns The filename without extension, lowercase
+ */
+function extractFilename(pathOrLocation: string): string {
+    if (!pathOrLocation) return '';
+    // Normalize separators and get the last segment
+    const normalized = pathOrLocation.replace(/\\/g, '/');
+    const lastSegment = normalized.split('/').pop() || '';
+    // Remove extension if present
+    return lastSegment.replace(/\.[^.]+$/, '').toLowerCase();
+}
+
+/**
  * Merges a VS attachment into the current project without overwriting project settings
  * @param content The VS_Shape data to merge
  * @param filePath The path to the file being imported (for clothing slot inference)
  */
 function mergeVSAttachment(content: VS_Shape, filePath?: string) {
-    // Add textures if they don't already exist
+    // Add textures if they don't already exist, or update existing ones
     for (const name in content.textures) {
-        const existingTexture = Texture.all.find((t: any) => t.name === name);
-        if (!existingTexture) {
-            const texturePath = util.get_texture_location(null, content.textures[name]);
+        const textureLocation = content.textures[name];
+        // Normalize textureLocation for comparison (handle path separators and casing)
+        const normalizedLocation = textureLocation?.toLowerCase().replace(/\\/g, '/');
+        // Extract filename from textureLocation for matching against existing textures
+        const locationFilename = extractFilename(textureLocation);
+
+        // Check if we already have a texture with this exact name
+        const existingByName = Texture.all.find((t: any) => t.name === name);
+
+        // Check if we have a texture with the same textureLocation (might have different name)
+        const existingByLocation = Texture.all.find((t: any) => {
+            const tLoc = t.textureLocation?.toLowerCase().replace(/\\/g, '/');
+            return tLoc && tLoc === normalizedLocation;
+        });
+
+        // Check if we have a texture whose name or path filename matches the textureLocation filename
+        // This handles the case where a texture was loaded from a local file and doesn't have textureLocation set
+        const existingByFilename = locationFilename ? Texture.all.find((t: any) => {
+            // Match by texture name (with or without extension)
+            const tName = (t.name || '').toLowerCase().replace(/\.[^.]+$/, '');
+            if (tName === locationFilename) return true;
+            // Match by path filename
+            const pathFilename = extractFilename(t.path);
+            if (pathFilename === locationFilename) return true;
+            return false;
+        }) : null;
+
+        console.log(`[Import VS] Texture "${name}" -> location: "${textureLocation}" (filename: "${locationFilename}")`);
+        console.log(`[Import VS]   existingByName: ${existingByName?.name || 'none'} (path: ${existingByName?.path || 'none'})`);
+        console.log(`[Import VS]   existingByLocation: ${existingByLocation?.name || 'none'} (path: ${existingByLocation?.path || 'none'})`);
+        console.log(`[Import VS]   existingByFilename: ${existingByFilename?.name || 'none'} (path: ${existingByFilename?.path || 'none'})`);
+
+        if (existingByName) {
+            // Texture with this name exists - ensure it has correct textureLocation and is loaded
+            if (!existingByName.textureLocation) {
+                existingByName.textureLocation = textureLocation;
+            }
+            if (!existingByName.loaded && existingByLocation?.path) {
+                // Use path from texture with matching location
+                existingByName.path = existingByLocation.path;
+                existingByName.load();
+            } else if (!existingByName.loaded && existingByFilename?.path) {
+                // Use path from texture with matching filename
+                existingByName.path = existingByFilename.path;
+                existingByName.load();
+            } else if (!existingByName.loaded) {
+                const texturePath = util.get_texture_location(null, textureLocation);
+                if (texturePath) {
+                    existingByName.path = texturePath;
+                    existingByName.load();
+                }
+            }
+        } else if (existingByLocation) {
+            // No texture with this name, but we have one with matching textureLocation
+            // Create a new texture entry with the imported name, using the existing texture's path
+            // Normalize path separators for cross-platform compatibility
+            const normalizedPath = existingByLocation.path?.replace(/\//g, '\\') || existingByLocation.path;
+            const texture = new Texture({
+                name,
+                path: normalizedPath
+            }).add().load();
+            texture.textureLocation = textureLocation;
+            if (content.textureSizes && content.textureSizes[name]) {
+                texture.uv_width = content.textureSizes[name][0];
+                texture.uv_height = content.textureSizes[name][1];
+            }
+            console.log(`[Import VS] Created texture "${name}" using path from existing texture with same location (path: ${normalizedPath})`);
+        } else if (existingByFilename) {
+            // No texture by name or location, but we have one with matching filename
+            // Create a new texture entry with the imported name, using the existing texture's path
+            // Normalize path separators for cross-platform compatibility
+            const normalizedPath = existingByFilename.path?.replace(/\//g, '\\') || existingByFilename.path;
+            const texture = new Texture({
+                name,
+                path: normalizedPath
+            }).add().load();
+            texture.textureLocation = textureLocation;
+            if (content.textureSizes && content.textureSizes[name]) {
+                texture.uv_width = content.textureSizes[name][0];
+                texture.uv_height = content.textureSizes[name][1];
+            }
+            console.log(`[Import VS] Created texture "${name}" using path from existing texture with matching filename "${locationFilename}" (path: ${normalizedPath})`);
+        } else {
+            // No matching texture found - create new one
+            const texturePath = util.get_texture_location(null, textureLocation);
             const texture = new Texture({ name, path: texturePath }).add().load();
             if (content.textureSizes && content.textureSizes[name]) {
                 texture.uv_width = content.textureSizes[name][0];
                 texture.uv_height = content.textureSizes[name][1];
             }
-            texture.textureLocation = content.textures[name];
+            texture.textureLocation = textureLocation;
         }
     }
 
