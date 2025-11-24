@@ -276,7 +276,6 @@ function createImportAction(config: ImportActionConfig) {
                     }
                 });
 
-                // Defer post-processing to allow Blockbench to update the outliner
                 const currentProject = Project;
                 setTimeout(() => {
                     if (!currentProject || Project !== currentProject) {
