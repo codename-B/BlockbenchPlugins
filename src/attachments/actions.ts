@@ -359,25 +359,20 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
     const newElements = [...elementsAfter].filter(e => !elementsBefore.has(e));
     const newElementsSet = new Set(newElements);
 
-    // Step 1: Reparent elements based on `stepParentName`. This property allows attachments
-    // to specify their intended parent bone in the main skeleton.
     if (DEBUG) console.log(`[${logPrefix}] Processing ${newElements.length} new elements for reparenting`);
     newElements.forEach(element => {
         const stepParentName = element.stepParentName?.trim();
         if (stepParentName) {
             const allMatches = findAllGroupsByName(stepParentName, Outliner.root);
-            // Prefer pre-existing groups over newly imported ones to avoid parenting to a new, empty group.
             let parentGroup = allMatches.find(g => !newElementsSet.has(g)) || null;
 
             if (!parentGroup && allMatches.length === 0) {
-                // If the target parent doesn't exist at all, create it.
                 parentGroup = new Group({ name: stepParentName }).addTo().init();
                 if (DEBUG) console.log(`[${logPrefix}] Created missing stepParent group: "${stepParentName}"`);
             }
 
             if (parentGroup && parentGroup !== element && !(element instanceof Group && isDescendantOf(parentGroup, element))) {
                 try {
-                    // This moves the element in the outliner hierarchy.
                     element.addTo(parentGroup);
                     if (DEBUG) console.log(`[${logPrefix}] Reparented "${element.name}" under "${stepParentName}" in outliner`);
                 } catch (e) {
@@ -387,8 +382,6 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
         }
     });
 
-    // Step 2: Handle groups renamed by Blockbench on import due to name conflicts (e.g., `head` becomes `head2`).
-    // This merges the contents of the duplicated group into the original and deletes the empty duplicate.
     const groupsToDelete: Group[] = [];
     const updatedGroups = collectGroupsDepthFirst(Outliner.root);
     updatedGroups.forEach(group => {
@@ -397,7 +390,6 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
         if (baseName !== gname && baseName) {
             const originalGroup = findGroupByName(baseName, Outliner.root);
             if (originalGroup && originalGroup !== group) {
-                // Move children from the duplicate group to the original group.
                 [...group.children].forEach(child => {
                     if (child === originalGroup || isDescendantOf(originalGroup, child)) {
                         if (DEBUG) console.warn(`[${logPrefix}] Skipping move to prevent circular parenting for "${child.name}"`);
@@ -415,8 +407,6 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
     });
     groupsToDelete.forEach(group => group.remove());
 
-    // Step 3: Determine and apply a single master clothing slot to all new elements that don't already have one.
-    // The slot is inferred from the original file path of the attachment.
     const masterClothingSlot = inferClothingSlotFromPath(filePath) || 'Unknown';
 
     if (masterClothingSlot) {
