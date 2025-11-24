@@ -1,3 +1,9 @@
+/**
+ * @file Defines the import actions for attachments and contains the core logic for merging models.
+ * This includes handling textures, parsing files, and running a sophisticated post-import process
+ * to automatically parent and organize imported elements.
+ */
+
 import { createExportCodec } from './codec';
 import { import_model } from '../import_model';
 import { VS_Shape } from '../vs_shape_def';
@@ -11,9 +17,9 @@ const DEBUG = false;
 const isWindows = typeof process !== 'undefined' && process.platform === 'win32';
 
 /**
- * Normalizes path separators to the current platform's convention
- * @param filePath The path to normalize
- * @returns Path with platform-appropriate separators
+ * Normalizes path separators to the current platform's convention.
+ * @param filePath The path to normalize.
+ * @returns Path with platform-appropriate separators.
  */
 function normalizePath(filePath: string): string {
     if (!filePath) return filePath;
@@ -21,49 +27,42 @@ function normalizePath(filePath: string): string {
 }
 
 /**
- * Extracts just the filename (without extension) from a path or textureLocation
- * @param pathOrLocation A file path or textureLocation string
- * @returns The filename without extension, lowercase
+ * Extracts just the filename (without extension) from a path or textureLocation.
+ * @param pathOrLocation A file path or textureLocation string.
+ * @returns The filename without extension, lowercase.
  */
 function extractFilename(pathOrLocation: string): string {
     if (!pathOrLocation) return '';
-    // Normalize separators and get the last segment
     const normalized = pathOrLocation.replace(/\\/g, '/');
     const lastSegment = normalized.split('/').pop() || '';
-    // Remove extension if present
     return lastSegment.replace(/\.[^.]+$/, '').toLowerCase();
 }
 
 /**
- * Merges a VS attachment into the current project without overwriting project settings
- * @param content The VS_Shape data to merge
- * @param filePath The path to the file being imported (for clothing slot inference)
+ * Merges a Vintage Story attachment into the current project, intelligently handling textures.
+ * This function is specialized for VS shapes and contains complex logic to find and reuse
+ * existing textures in the project, preventing duplicates. It attempts to match textures by
+ * name, by `textureLocation` property, and finally by filename. This is necessary to accommodate
+ * various states a user's project might be in.
+ * @param content The VS_Shape data to merge.
+ * @param filePath The path to the file being imported, used for clothing slot inference.
  */
 function mergeVSAttachment(content: VS_Shape, filePath?: string) {
-    // Add textures if they don't already exist, or update existing ones
     for (const name in content.textures) {
         const textureLocation = content.textures[name];
-        // Normalize textureLocation for comparison (handle path separators and casing)
         const normalizedLocation = textureLocation?.toLowerCase().replace(/\\/g, '/');
-        // Extract filename from textureLocation for matching against existing textures
         const locationFilename = extractFilename(textureLocation);
 
-        // Check if we already have a texture with this exact name
         const existingByName = Texture.all.find((t: any) => t.name === name);
 
-        // Check if we have a texture with the same textureLocation (might have different name)
         const existingByLocation = Texture.all.find((t: any) => {
             const tLoc = t.textureLocation?.toLowerCase().replace(/\\/g, '/');
             return tLoc && tLoc === normalizedLocation;
         });
 
-        // Check if we have a texture whose name or path filename matches the textureLocation filename
-        // This handles the case where a texture was loaded from a local file and doesn't have textureLocation set
         const existingByFilename = locationFilename ? Texture.all.find((t: any) => {
-            // Match by texture name (with or without extension)
             const tName = (t.name || '').toLowerCase().replace(/\.[^.]+$/, '');
             if (tName === locationFilename) return true;
-            // Match by path filename
             const pathFilename = extractFilename(t.path);
             if (pathFilename === locationFilename) return true;
             return false;
@@ -77,16 +76,13 @@ function mergeVSAttachment(content: VS_Shape, filePath?: string) {
         }
 
         if (existingByName) {
-            // Texture with this name exists - ensure it has correct textureLocation and is loaded
             if (!existingByName.textureLocation) {
                 existingByName.textureLocation = textureLocation;
             }
             if (!existingByName.loaded && existingByLocation?.path) {
-                // Use path from texture with matching location
                 existingByName.path = existingByLocation.path;
                 existingByName.load();
             } else if (!existingByName.loaded && existingByFilename?.path) {
-                // Use path from texture with matching filename
                 existingByName.path = existingByFilename.path;
                 existingByName.load();
             } else if (!existingByName.loaded) {
@@ -97,13 +93,8 @@ function mergeVSAttachment(content: VS_Shape, filePath?: string) {
                 }
             }
         } else if (existingByLocation) {
-            // No texture with this name, but we have one with matching textureLocation
-            // Create a new texture entry with the imported name, using the existing texture's path
             const texPath = normalizePath(existingByLocation.path);
-            const texture = new Texture({
-                name,
-                path: texPath
-            }).add().load();
+            const texture = new Texture({ name, path: texPath }).add().load();
             texture.textureLocation = textureLocation;
             if (content.textureSizes && content.textureSizes[name]) {
                 texture.uv_width = content.textureSizes[name][0];
@@ -111,13 +102,8 @@ function mergeVSAttachment(content: VS_Shape, filePath?: string) {
             }
             if (DEBUG) console.log(`[Import VS] Created texture "${name}" using path from existing texture with same location (path: ${texPath})`);
         } else if (existingByFilename) {
-            // No texture by name or location, but we have one with matching filename
-            // Create a new texture entry with the imported name, using the existing texture's path
             const texPath = normalizePath(existingByFilename.path);
-            const texture = new Texture({
-                name,
-                path: texPath
-            }).add().load();
+            const texture = new Texture({ name, path: texPath }).add().load();
             texture.textureLocation = textureLocation;
             if (content.textureSizes && content.textureSizes[name]) {
                 texture.uv_width = content.textureSizes[name][0];
@@ -125,7 +111,6 @@ function mergeVSAttachment(content: VS_Shape, filePath?: string) {
             }
             if (DEBUG) console.log(`[Import VS] Created texture "${name}" using path from existing texture with matching filename "${locationFilename}" (path: ${texPath})`);
         } else {
-            // No matching texture found - create new one
             const texturePath = util.get_texture_location(null, textureLocation);
             const texture = new Texture({ name, path: texturePath }).add().load();
             if (content.textureSizes && content.textureSizes[name]) {
@@ -136,29 +121,25 @@ function mergeVSAttachment(content: VS_Shape, filePath?: string) {
         }
     }
 
-    // Import only the model elements (not as backdrop)
-    // Pass filePath for clothing slot inference
     import_model(content, false, filePath);
 }
 
 /**
- * Removes trailing commas from JSON strings to fix common syntax errors
- * This handles cases like: },] or },} which are invalid in strict JSON
- * @param jsonString The JSON string to clean
- * @returns Cleaned JSON string
+ * Removes trailing commas from JSON strings to fix common syntax errors.
+ * This handles cases like: `},]` or `},}` which are invalid in strict JSON.
+ * @param jsonString The JSON string to clean.
+ * @returns Cleaned JSON string.
  */
 function cleanJSONString(jsonString: string): string {
-    // Remove trailing commas before closing brackets/braces
-    // Matches: comma followed by optional whitespace and then ] or }
     return jsonString.replace(/,(\s*[\]}])/g, '$1');
 }
 
 /**
  * Recursively finds a group by name within a given array of elements.
- * Case-insensitive comparison.
- * @param {string} name The name of the group to find.
- * @param {Array<object>} elements The array/tree to search through (e.g., Outliner.root).
- * @returns {Group|null} The found group or null if not found.
+ * Comparison is case-insensitive.
+ * @param name The name of the group to find.
+ * @param elements The array/tree to search through (e.g., Outliner.root).
+ * @returns The found group or null if not found.
  */
 function findGroupByName(name: string, elements: any[]): Group | null {
     const target = (name || '').toLowerCase();
@@ -177,10 +158,10 @@ function findGroupByName(name: string, elements: any[]): Group | null {
 
 /**
  * Recursively finds ALL groups matching a name within a given array of elements.
- * Case-insensitive comparison.
- * @param {string} name The name of the groups to find.
- * @param {Array<object>} elements The array/tree to search through (e.g., Outliner.root).
- * @returns {Group[]} Array of all matching groups.
+ * Comparison is case-insensitive.
+ * @param name The name of the groups to find.
+ * @param elements The array/tree to search through (e.g., Outliner.root).
+ * @returns Array of all matching groups.
  */
 function findAllGroupsByName(name: string, elements: any[]): Group[] {
     const target = (name || '').toLowerCase();
@@ -205,9 +186,9 @@ function findAllGroupsByName(name: string, elements: any[]): Group[] {
 }
 
 /**
- * Strips numeric suffixes (like "2", "3") that BlockBench adds to duplicate group names.
- * @param {string} name The group name, e.g., "body2" or "head3"
- * @returns {string} The base name without numeric suffix, e.g., "body" or "head"
+ * Strips numeric suffixes (like "2", "3") that Blockbench adds to duplicate group names.
+ * @param name The group name, e.g., "body2" or "head3".
+ * @returns The base name without numeric suffix, e.g., "body" or "head".
  */
 function stripNumericSuffix(name: string): string {
     if (!name) return '';
@@ -216,9 +197,9 @@ function stripNumericSuffix(name: string): string {
 
 /**
  * Recursively collects all groups in depth-first order (top of hierarchy first).
- * @param {Array<object>} elements The array/tree to traverse.
- * @param {Array<Group>} result The accumulator for groups.
- * @returns {Array<Group>}
+ * @param elements The array/tree to traverse.
+ * @param result The accumulator for groups.
+ * @returns A flat array of all groups.
  */
 function collectGroupsDepthFirst(elements: any[], result: Group[] = []): Group[] {
     for (const element of elements) {
@@ -233,20 +214,36 @@ function collectGroupsDepthFirst(elements: any[], result: Group[] = []): Group[]
 }
 
 
-export function createActions() {
-    // Use your export codec for the import dialog (extension/name)
-    const codec = createExportCodec();
 
-    const importBBAction = new Action('import_bb_attachment', {
-        name: 'Import BB Attachment',
-        icon: 'fa-file-import',
+interface ImportActionConfig {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    resource_id?: string;
+    extensions: string[];
+    type: string;
+    logPrefix: string;
+    mergeFn: (model: any, filePath: string) => void;
+}
+
+/**
+ * Factory function to create a generic attachment import action. This abstracts the common logic
+ * for handling file import, parsing, and post-processing, thus reducing code duplication.
+ * @param config Configuration object defining the specifics of the import action.
+ * @returns A configured Blockbench `Action` instance.
+ */
+function createImportAction(config: ImportActionConfig) {
+    return new Action(config.id, {
+        name: config.name,
+        icon: config.icon,
         category: 'file',
-        description: 'Import and automatically parent a .bbmodel attachment file',
+        description: config.description,
         click: () => {
             Blockbench.import({
-                resource_id: 'model',
-                extensions: [codec.extension],
-                type: codec.name,
+                resource_id: config.resource_id,
+                extensions: config.extensions,
+                type: config.type,
                 multiple: true,
             }, function(files) {
                 if (!files || !files.length) return;
@@ -255,111 +252,74 @@ export function createActions() {
 
                 const elementsBefore = new Set([...Group.all, ...Cube.all]);
 
-                // Merge each imported file into the current project
                 files.forEach(file => {
                     try {
-                        // Clean the JSON to remove trailing commas before parsing
                         const cleanedContent = cleanJSONString(file.content as string);
                         const model = autoParseJSON(cleanedContent);
 
-                        // Validate that we got a valid model object
                         if (!model || typeof model !== 'object') {
-                            console.error('[Import BB Attachment] Invalid model data in file:', file.path);
+                            console.error(`[${config.logPrefix}] Invalid model data in file:`, file.path);
                             Blockbench.showQuickMessage(`Failed to import ${file.name}: Invalid JSON structure`, 3000);
                             return;
                         }
 
-                        // Remove animations from the model before merging
-                        // We don't want attachment animations mixed with the main model
-                        // Note: Animations may be missing or empty for clothing attachments - this is normal
                         if (model.animations && Array.isArray(model.animations) && model.animations.length > 0) {
-                            console.log('[Import BB Attachment] Skipping', model.animations.length, 'animations from attachment file');
+                            console.log(`[${config.logPrefix}] Skipping`, model.animations.length, 'animations from attachment file');
                             delete model.animations;
                         }
 
-                        Codecs.project.merge(model, file.path);
+                        config.mergeFn(model, file.path);
+
                     } catch (err) {
-                        console.error('[Import BB Attachment] Error importing file:', file.path, err);
+                        console.error(`[${config.logPrefix}] Error importing file:`, file.path, err);
                         Blockbench.showQuickMessage(`Failed to import ${file.name}: ${err.message || err}`, 3000);
                     }
                 });
 
-                // Give Blockbench a tick to settle the outliner
-                // Capture project reference to check validity after timeout
+                // Defer post-processing to allow Blockbench to update the outliner
                 const currentProject = Project;
                 setTimeout(() => {
-                    // Ensure project is still valid before processing
                     if (!currentProject || Project !== currentProject) {
-                        console.warn('[Import BB] Project changed or closed, skipping post-import processing');
+                        console.warn(`[${config.logPrefix}] Project changed or closed, skipping post-import processing`);
                         return;
                     }
-                    processImportedAttachments(elementsBefore, files[0].path, 'Import BB');
+                    processImportedAttachments(elementsBefore, files[0].path, config.logPrefix);
                 }, 100);
             });
         }
     });
+}
 
-    const importVSAction = new Action('import_vs_attachment', {
-        name: 'Import VS Attachment',
+/**
+ * Creates and returns the attachment import actions for the UI.
+ * This function leverages the `createImportAction` factory to build actions for different
+ * file formats (.bbmodel and .json) without duplicating code.
+ * @returns An object containing the configured import actions.
+ */
+export function createActions() {
+    const codec = createExportCodec();
+
+    const importBBAction = createImportAction({
+        id: 'import_bb_attachment',
+        name: 'Import BB Attachment',
+        description: 'Import and automatically parent a .bbmodel attachment file',
         icon: 'fa-file-import',
-        category: 'file',
+        resource_id: 'model',
+        extensions: [codec.extension],
+        type: codec.name,
+        logPrefix: 'Import BB',
+        mergeFn: (model, filePath) => Codecs.project.merge(model, filePath)
+    });
+
+    const importVSAction = createImportAction({
+        id: 'import_vs_attachment',
+        name: 'Import VS Attachment',
         description: 'Import and automatically parent a .json attachment file',
-        click: () => {
-            Blockbench.import({
-                extensions: ['json'],
-                type: 'Vintage Story Shape',
-                multiple: true,
-            }, function(files) {
-                if (!files || !files.length) return;
-
-                Undo.initEdit({ outliner: true });
-
-                const elementsBefore = new Set([...Group.all, ...Cube.all]);
-
-                // Merge each imported file into the current project
-                files.forEach(file => {
-                    try {
-                        // Clean the JSON to remove trailing commas before parsing
-                        const cleanedContent = cleanJSONString(file.content as string);
-                        const model = autoParseJSON(cleanedContent);
-
-                        // Validate that we got a valid model object
-                        if (!model || typeof model !== 'object') {
-                            console.error('[Import VS Attachment] Invalid model data in file:', file.path);
-                            Blockbench.showQuickMessage(`Failed to import ${file.name}: Invalid JSON structure`, 3000);
-                            return;
-                        }
-
-                        // Remove animations from the model before merging
-                        // We don't want attachment animations mixed with the main model
-                        // Note: Animations may be missing or empty for clothing attachments - this is normal
-                        if (model.animations && Array.isArray(model.animations) && model.animations.length > 0) {
-                            console.log('[Import VS Attachment] Skipping', model.animations.length, 'animations from attachment file');
-                            delete model.animations;
-                        }
-
-                        // Use our custom VS merge function instead of the generic codec merge
-                        // Pass the file path for clothing slot inference
-                        mergeVSAttachment(model as VS_Shape, file.path);
-                    } catch (err) {
-                        console.error('[Import VS Attachment] Error importing file:', file.path, err);
-                        Blockbench.showQuickMessage(`Failed to import ${file.name}: ${err.message || err}`, 3000);
-                    }
-                });
-
-                // Give Blockbench a tick to settle the outliner
-                // Capture project reference to check validity after timeout
-                const currentProject = Project;
-                setTimeout(() => {
-                    // Ensure project is still valid before processing
-                    if (!currentProject || Project !== currentProject) {
-                        console.warn('[Import VS] Project changed or closed, skipping post-import processing');
-                        return;
-                    }
-                    processImportedAttachments(elementsBefore, files[0].path, 'Import VS');
-                }, 100);
-            });
-        }
+        icon: 'fa-file-import',
+        extensions: ['json'],
+        type: 'Vintage Story Shape',
+        logPrefix: 'Import VS',
+        mergeFn: (model, filePath) => mergeVSAttachment(model as VS_Shape, filePath)
     });
 
     return {
@@ -369,8 +329,11 @@ export function createActions() {
 }
 
 /**
- * Checks if 'possibleAncestor' is an ancestor of 'node'
- * Used to prevent circular reparenting
+ * Checks if 'possibleAncestor' is an ancestor of 'node'.
+ * This is a safeguard to prevent circular parenting when moving elements.
+ * @param node The node to check.
+ * @param possibleAncestor The potential ancestor to check against.
+ * @returns True if `possibleAncestor` is an ancestor of `node`.
  */
 function isDescendantOf(node: any, possibleAncestor: any): boolean {
     let current = node.parent;
@@ -382,42 +345,42 @@ function isDescendantOf(node: any, possibleAncestor: any): boolean {
 }
 
 /**
- * Shared post-import processing for both BB and VS attachment imports.
- * Handles reparenting, duplicate merging, clothing slot assignment, and stepParent inference.
- * @param elementsBefore Set of elements before import
- * @param filePath Path to the first imported file (for slot inference)
- * @param logPrefix Prefix for console log messages (e.g., "Import BB" or "Import VS")
+ * Performs post-import processing on newly added elements to automate project organization.
+ * The process runs in a specific order:
+ * 1. **Re-parenting:** Moves elements under their designated parent based on the `stepParentName` property.
+ * 2. **Merge Duplicates:** Merges groups that were duplicated on import (e.g., `head2` into `head`).
+ * 3. **Apply Clothing Slot:** Assigns a master clothing slot inferred from the file path to all new elements.
+ * This function is critical for a smooth user workflow, as it handles tedious manual organization tasks.
+ * @param elementsBefore A `Set` of all elements that existed before the import.
+ * @param filePath Path to the first imported file, used for clothing slot inference.
+ * @param logPrefix A prefix for console log messages (e.g., "Import BB").
  */
 function processImportedAttachments(elementsBefore: Set<any>, filePath: string, logPrefix: string) {
     const elementsAfter = new Set([...Group.all, ...Cube.all]);
     const newElements = [...elementsAfter].filter(e => !elementsBefore.has(e));
     const newElementsSet = new Set(newElements);
 
-    // Step 1: Reparent elements based on stepParentName, then CLEAR stepParentName
-    // We clear it after reparenting so the mesh-level system in nodePreviewControllerMod.ts
-    // doesn't also try to handle parenting (which would cause THREE.js conflicts)
+    // Step 1: Reparent elements based on `stepParentName`. This property allows attachments
+    // to specify their intended parent bone in the main skeleton.
     if (DEBUG) console.log(`[${logPrefix}] Processing ${newElements.length} new elements for reparenting`);
     newElements.forEach(element => {
         const stepParentName = element.stepParentName?.trim();
         if (stepParentName) {
-            // Find all groups with this name
             const allMatches = findAllGroupsByName(stepParentName, Outliner.root);
-
-            // Prefer pre-existing groups over newly imported ones
+            // Prefer pre-existing groups over newly imported ones to avoid parenting to a new, empty group.
             let parentGroup = allMatches.find(g => !newElementsSet.has(g)) || null;
 
             if (!parentGroup && allMatches.length === 0) {
-                // No group with this name exists at all - create one
+                // If the target parent doesn't exist at all, create it.
                 parentGroup = new Group({ name: stepParentName }).addTo().init();
                 if (DEBUG) console.log(`[${logPrefix}] Created missing stepParent group: "${stepParentName}"`);
             }
 
             if (parentGroup && parentGroup !== element && !(element instanceof Group && isDescendantOf(parentGroup, element))) {
                 try {
-                    // Only do outliner reparenting - keep stepParentName intact for mesh positioning
-                    // The nodePreviewControllerMod.ts handles mesh positioning based on stepParentName
+                    // This moves the element in the outliner hierarchy.
                     element.addTo(parentGroup);
-                    if (DEBUG) console.log(`[${logPrefix}] Reparented "${element.name}" under "${stepParentName}" in outliner (keeping stepParentName for mesh positioning)`);
+                    if (DEBUG) console.log(`[${logPrefix}] Reparented "${element.name}" under "${stepParentName}" in outliner`);
                 } catch (e) {
                     console.error(`[${logPrefix}] Failed to reparent "${element.name}" to "${stepParentName}":`, e);
                 }
@@ -425,7 +388,8 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
         }
     });
 
-    // Step 2: Handle renamed duplicates (e.g., "head2" -> merge into "head")
+    // Step 2: Handle groups renamed by Blockbench on import due to name conflicts (e.g., `head` becomes `head2`).
+    // This merges the contents of the duplicated group into the original and deletes the empty duplicate.
     const groupsToDelete: Group[] = [];
     const updatedGroups = collectGroupsDepthFirst(Outliner.root);
     updatedGroups.forEach(group => {
@@ -434,18 +398,10 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
         if (baseName !== gname && baseName) {
             const originalGroup = findGroupByName(baseName, Outliner.root);
             if (originalGroup && originalGroup !== group) {
+                // Move children from the duplicate group to the original group.
                 [...group.children].forEach(child => {
-                    // Safety checks to prevent circular references
-                    if (child === originalGroup || child.uuid === originalGroup.uuid) {
-                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - child "${child.name}" is the target group`);
-                        return;
-                    }
-                    if (child.parent === originalGroup) {
-                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - child "${child.name}" already under "${originalGroup.name}"`);
-                        return;
-                    }
-                    if (isDescendantOf(originalGroup, child)) {
-                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - "${originalGroup.name}" is descendant of "${child.name}"`);
+                    if (child === originalGroup || isDescendantOf(originalGroup, child)) {
+                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move to prevent circular parenting for "${child.name}"`);
                         return;
                     }
                     try {
@@ -460,15 +416,14 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
     });
     groupsToDelete.forEach(group => group.remove());
 
-    // Step 3: Determine and apply a single master clothing slot
-    // Only apply to elements that don't already have a clothing slot set
+    // Step 3: Determine and apply a single master clothing slot to all new elements that don't already have one.
+    // The slot is inferred from the original file path of the attachment.
     const masterClothingSlot = inferClothingSlotFromPath(filePath) || 'Unknown';
 
     if (masterClothingSlot) {
-        if (DEBUG) console.log(`[${logPrefix}] Applying master clothing slot "${masterClothingSlot}" to elements without a slot.`);
+        if (DEBUG) console.log(`[${logPrefix}] Applying master clothing slot "${masterClothingSlot}" to new elements.`);
         function applySlotRecursive(element: any, slot: string) {
             if (element instanceof Group || element instanceof Cube) {
-                // Only set if not already set
                 if (!element.clothingSlot || element.clothingSlot.trim() === '') {
                     element.clothingSlot = slot;
                 }
@@ -479,9 +434,6 @@ function processImportedAttachments(elementsBefore: Set<any>, filePath: string, 
         }
         newElements.forEach(element => applySlotRecursive(element, masterClothingSlot));
     }
-
-    // Step 4: Skip auto-setting stepParentName - we now use outliner hierarchy instead
-    // Setting stepParentName would trigger the mesh-level parenting system which conflicts
 
     Undo.finishEdit('Import and parent attachment');
     Canvas.updateAll();
