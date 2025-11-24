@@ -4,20 +4,6 @@ import { VS_Shape } from '../vs_shape_def';
 import { inferClothingSlotFromPath } from './presets';
 import * as util from '../util';
 
-declare var Action: any;
-declare var Group: any;
-declare var Cube: any;
-declare var Outliner: any;
-declare var Undo: any;
-declare var Canvas: any;
-declare var Codecs: any;
-declare var Blockbench: any;
-declare var Texture: any;
-declare var Project: any;
-
-declare function autoParseJSON(content: string): any;
-declare function updateSelection(): void;
-
 /** Debug flag - set to true to enable verbose logging */
 const DEBUG = false;
 

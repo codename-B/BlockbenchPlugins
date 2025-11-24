@@ -1,14 +1,3 @@
-declare var Codec: any;
-declare var Project: any;
-declare var Texture: any;
-declare var Cube: any;
-declare var Group: any;
-declare var Outliner: any;
-declare var Format: any;
-declare var Blockbench: any;
-
-declare function compileJSON(model: any): string;
-
 export function createExportCodec() {
     function compileGroupsFrom(rootGroups: any[], undo: boolean): any[] {
         const result: any[] = [];

@@ -1,13 +1,3 @@
-declare var Panel: any;
-declare var Toolbar: any;
-declare var Interface: any;
-declare var Outliner: any;
-declare var Group: any;
-declare var Cube: any;
-declare var Canvas: any;
-declare var Blockbench: any;
-declare var updateSelection: any;
-
 import { exportAttachmentsVS } from './export_attachment_vs';
 import { exportAttachmentsBB } from './export_attachment_bb';
 import { deleteSection } from './delete_section';

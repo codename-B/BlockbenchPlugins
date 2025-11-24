@@ -1,7 +1,4 @@
-declare var Group: any;
 import { createExportCodec } from './codec';
-
-declare function alert(message: string): void;
 
 /**
  * Exports the selected attachments to the standard Blockbench (.bbmodel) format.

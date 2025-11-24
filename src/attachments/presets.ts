@@ -153,8 +153,6 @@ export function inferClothingSlotFromPath(filePath: string): string | null {
  * Get the active slot names based on the current settings
  * @returns Array of slot names to use for attachment detection
  */
-declare var Settings: any;
-
 export function getActiveSlotNames(): string[] {
     // Try to get from settings
     try {

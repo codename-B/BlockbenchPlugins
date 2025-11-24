@@ -4,17 +4,6 @@ import * as props from "../property";
 import * as util from '../util';
 import { VS_Element } from '../vs_shape_def';
 
-declare var Group: any;
-declare var Texture: any;
-declare var Project: any;
-declare var OutlinerNode: any;
-declare var Settings: any;
-declare var Blockbench: any;
-
-declare function requireNativeModule(module: string): any;
-declare function autoStringify(data: any): string;
-declare function alert(message: string): void;
-
 const fs = requireNativeModule('fs');
 
 /** Debug flag - set to true to enable verbose logging */

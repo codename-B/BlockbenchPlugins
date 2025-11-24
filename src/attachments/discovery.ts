@@ -1,7 +1,3 @@
-declare var Outliner: any;
-declare var Group: any;
-declare var Cube: any;
-
 import { getActiveSlotNames } from './presets';
 
 export interface IAttachmentSection {
