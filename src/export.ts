@@ -2,7 +2,12 @@ import {export_model} from "./export_model";
 import {export_animations} from "./export_animation";
 import { VS_EditorSettings, VS_Shape } from "./vs_shape_def";
 import { VS_PROJECT_PROPS } from "./property";
-import { export_textures } from "./export_textures";
+import { export_textures, resolveTextureLocation } from "./export_textures";
+
+// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
+const fs = requireNativeModule('fs');
+// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
+const path = requireNativeModule('path');
 
 /**
  * Saves a texture to disk, respecting VS folder structure (shapes -> textures).
@@ -127,7 +132,13 @@ export function ex(options): VS_Shape {
 
         textures[texture.name] = location || "";
     }
-    
+
+    // Export model elements
+    const elements = export_model();
+
+    // Export animations
+    const animations = export_animations();
+
     // Populate Editor Info
     const editor: VS_EditorSettings = {};
 

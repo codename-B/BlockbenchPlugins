@@ -214,7 +214,19 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
 
         topLevelNewElements.forEach(element => applySlotRecursive(element, masterClothingSlot));
     } else {
-        if (DEBUG) console.log(`[${logPrefix}] No clothing slot selected, skipping slot assignment`);
+        // User cancelled - remove all imported elements to prevent orphaned attachments
+        if (DEBUG) console.log(`[${logPrefix}] User cancelled clothing slot selection, removing ${newElements.length} imported elements`);
+
+        // Remove all newly imported elements
+        newElements.forEach(element => {
+            try {
+                element.remove();
+            } catch (e) {
+                console.error(`[${logPrefix}] Failed to remove element "${element.name}":`, e);
+            }
+        });
+
+        Blockbench.showQuickMessage('Import cancelled - no elements added', 2000);
     }
 
     Undo.finishEdit('Import and parent attachment');

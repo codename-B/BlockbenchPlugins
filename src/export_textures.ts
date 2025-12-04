@@ -69,7 +69,7 @@ function texture_name_extractor(element: VS_Element): Set<string> {
  * @param textureName - The name of the texture (e.g., "fern.png")
  * @returns The VS-style texture path (e.g., "blocks/fern") or empty string if not found
  */
-function resolveTextureLocation(projectPath: string | undefined, textureName: string): string {
+export function resolveTextureLocation(projectPath: string | undefined, textureName: string): string {
     if (!projectPath || !textureName) {
         return "";
     }

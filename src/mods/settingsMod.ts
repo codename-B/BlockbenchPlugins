@@ -83,7 +83,7 @@ createBlockbenchMod(
             type: "select",
             value: "glint",
             options: {
-                glint: "Glint (Outerwear, Top, Bottom, Boot, etc.)",
+                glint: "Glint (Outerwear, Top, Bottoms, Boots, etc.)",
                 vintage_story: "Vintage Story (Arm, Head, UpperBody, etc.)",
                 custom: "Custom (configure your own slots)"
             },
