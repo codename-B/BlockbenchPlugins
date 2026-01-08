@@ -147,7 +147,7 @@ const vuePanel = {
                 }
                 .section-buttons {
                     display: flex;
-                    gap: 2px;
+                    gap: 0;
                     margin-left: auto;
                     align-items: center;
                     flex-shrink: 0;
@@ -161,7 +161,7 @@ const vuePanel = {
                     align-items: center;
                     justify-content: center;
                     cursor: pointer;
-                    border-radius: 3px;
+                    border-radius: 0;
                     font-size: 16px;
                     transition: background 0.15s;
                     padding: 0;
@@ -169,14 +169,24 @@ const vuePanel = {
                 .section-buttons .material-icons:hover {
                     background: rgba(255, 255, 255, 0.1);
                 }
+                .section-buttons .material-icons:first-child {
+                    border-top-left-radius: 3px;
+                    border-bottom-left-radius: 3px;
+                }
+                .section-buttons .material-icons:last-child {
+                    border-top-right-radius: 3px;
+                    border-bottom-right-radius: 3px;
+                }
                 .section-buttons .action-group {
                     display: flex;
-                    gap: 1px;
-                    padding: 0 2px;
-                    border-left: 1px solid rgba(255, 255, 255, 0.08);
+                    gap: 0;
                 }
-                .section-buttons .action-group:first-child {
-                    border-left: none;
+                .section-buttons .action-divider {
+                    width: 1px;
+                    height: 16px;
+                    background: rgba(255, 255, 255, 0.15);
+                    margin: 0 2px;
+                    flex-shrink: 0;
                 }
                 .element-list {
                     list-style: none;
@@ -264,19 +274,15 @@ const vuePanel = {
                             <span class="attachment-count">{{ section.elements.length }}</span>
                             
                             <span class="section-buttons">
-                                <div class="action-group">
-                                    <i class="material-icons" @click.stop="selectSection(section.elements)" title="Select all elements in this section">select_all</i>
-                                    <i class="material-icons" @click.stop="toggleVisibility(section.elements, !getSectionVisibility(section.elements))" :title="getSectionVisibility(section.elements) ? 'Hide all elements in this section' : 'Show all elements in this section'">
-                                        {{ getSectionVisibility(section.elements) ? 'visibility' : 'visibility_off' }}
-                                    </i>
-                                </div>
-                                <div class="action-group">
-                                    <i class="material-icons" @click.stop="exportBB(section.elements)" title="Export to .bbmodel">save</i>
-                                    <i class="material-icons" @click.stop="exportVS(section.elements)" title="Export as VS .json">file_download</i>
-                                </div>
-                                <div class="action-group">
-                                    <i class="material-icons" @click.stop="confirmDelete(section.elements, section.slot)" title="Delete all elements in this section" style="color: #f44336;">delete</i>
-                                </div>
+                                <i class="material-icons" @click.stop="selectSection(section.elements)" title="Select all elements in this section">select_all</i>
+                                <i class="material-icons" @click.stop="toggleVisibility(section.elements, !getSectionVisibility(section.elements))" :title="getSectionVisibility(section.elements) ? 'Hide all elements in this section' : 'Show all elements in this section'">
+                                    {{ getSectionVisibility(section.elements) ? 'visibility' : 'visibility_off' }}
+                                </i>
+                                <span class="action-divider"></span>
+                                <i class="material-icons" @click.stop="exportBB(section.elements)" title="Export to .bbmodel">save</i>
+                                <i class="material-icons" @click.stop="exportVS(section.elements)" title="Export as VS .json">file_download</i>
+                                <span class="action-divider"></span>
+                                <i class="material-icons" @click.stop="confirmDelete(section.elements, section.slot)" title="Delete all elements in this section" style="color: #f44336;">delete</i>
                             </span>
                         </h2>
                         <div class="tooltip-content">
