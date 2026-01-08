@@ -322,13 +322,13 @@ const vuePanel = {
                         </h2>
                         <div class="tooltip-content">
                             <div><strong>{{ section.slot }}</strong></div>
-                            <div style="margin-top: 4px; font-size: 11px;">
-                                <div v-for="element in getFlattenedElementList(section.elements).slice(0, 10)" :key="element.uuid">
-                                    • {{ element.name }}
-                                </div>
-                                <div v-if="section.elements.length > 10" style="margin-top: 4px; opacity: 0.7;">
+                            <div style="margin-top: 4px; font-size: 11px; line-height: 1.4;">
+                                <span v-for="(element, index) in getFlattenedElementList(section.elements).slice(0, 10)" :key="element.uuid">
+                                    {{ element.name }}<span v-if="index < Math.min(section.elements.length, 10) - 1">, </span>
+                                </span>
+                                <span v-if="section.elements.length > 10" style="opacity: 0.7;">
                                     ... and {{ section.elements.length - 10 }} more
-                                </div>
+                                </span>
                             </div>
                         </div>
                     </div>
