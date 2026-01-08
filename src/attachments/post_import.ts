@@ -127,6 +127,54 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
         Blockbench.showQuickMessage(`Matched ${matchingTable.length} attachment group(s) to existing model`, 3000);
     }
 
+    // STEP 1.5: Parent Matching by Group Name (for groups with same name as existing)
+    // This handles the case where the imported attachment has a group with the same name
+    // as a group already existing in the model hierarchy (e.g., importing "Ears" when "Head > Ears" exists)
+    if (DEBUG) console.log(`[${logPrefix}] Processing top-level groups for name-based parent matching`);
+
+    // Get remaining top-level groups (those not matched in Step 1)
+    const remainingTopLevelGroups = newElements.filter(element => {
+        if (!(element instanceof Group)) return false;
+        const parent = element.parent;
+        return !parent || !newElementsSet.has(parent);
+    }) as Group[];
+
+    remainingTopLevelGroups.forEach(newGroup => {
+        // Find existing groups with the same name (case-insensitive)
+        const allMatches = findAllGroupsByName(newGroup.name, Outliner.root);
+        const existingMatch = allMatches.find(g => !newElementsSet.has(g));
+
+        if (existingMatch) {
+            // Move all children of the new group into the existing group
+            const childrenToMove = [...newGroup.children];
+
+            if (DEBUG) console.log(`[${logPrefix}] Name Match: Moving children of "${newGroup.name}" into existing group`);
+
+            childrenToMove.forEach(child => {
+                try {
+                    child.addTo(existingMatch);
+                } catch (e) {
+                    console.error(`[${logPrefix}] Failed to move "${child.name}" to existing "${existingMatch.name}":`, e);
+                }
+            });
+
+            // Copy clothingSlot from imported group if the existing group doesn't have one
+            if (newGroup.clothingSlot && !existingMatch.clothingSlot) {
+                existingMatch.clothingSlot = newGroup.clothingSlot;
+                if (DEBUG) console.log(`[${logPrefix}] Copied clothingSlot "${newGroup.clothingSlot}" to existing "${existingMatch.name}"`);
+            }
+
+            // Remove the now-empty imported group
+            if (newGroup.children.length === 0) {
+                newGroup.remove();
+                // Remove from newElements and newElementsSet to avoid processing later
+                const idx = newElements.indexOf(newGroup);
+                if (idx !== -1) newElements.splice(idx, 1);
+                newElementsSet.delete(newGroup);
+            }
+        }
+    });
+
     // STEP 2: Re-parenting based on stepParentName
     if (DEBUG) console.log(`[${logPrefix}] Processing ${newElements.length} new elements for stepParent reparenting`);
     newElements.forEach(element => {
