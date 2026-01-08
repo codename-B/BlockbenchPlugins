@@ -69,6 +69,42 @@ function getAllChildElements(element: any) {
 }
 
 /**
+ * Calculates the depth of an element in the outliner hierarchy.
+ * Depth is measured from the root (root = 0, first child = 1, etc.)
+ * @param element The element to calculate depth for.
+ * @returns The depth of the element in the hierarchy.
+ */
+function getElementDepth(element: any): number {
+    let depth = 0;
+    let current = element.parent;
+    while (current) {
+        depth++;
+        current = current.parent;
+    }
+    return depth;
+}
+
+/**
+ * Calculates the minimum depth among all elements in a section.
+ * @param elements Array of elements in the section.
+ * @returns The minimum depth found.
+ */
+function getMinDepth(elements: any[]): number {
+    if (elements.length === 0) return 0;
+    return Math.min(...elements.map(el => getElementDepth(el)));
+}
+
+/**
+ * Calculates the maximum depth among all elements in a section.
+ * @param elements Array of elements in the section.
+ * @returns The maximum depth found.
+ */
+function getMaxDepth(elements: any[]): number {
+    if (elements.length === 0) return 0;
+    return Math.max(...elements.map(el => getElementDepth(el)));
+}
+
+/**
  * Updates the outliner selection with the provided elements.
  * @param {Array<object>} elements The elements to select.
  */
@@ -192,16 +228,16 @@ const vuePanel = {
                     list-style: none;
                     margin: 0;
                     padding: 0;
-                    padding-left: 4px;
+                    padding-left: 2px;
                 }
                 .element-item {
                     display: flex;
                     align-items: center;
-                    gap: 4px;
-                    padding: 2px 6px 2px 20px;
+                    gap: 3px;
+                    padding: 1px 4px;
                     cursor: pointer;
-                    font-size: 12px;
-                    min-height: 22px;
+                    font-size: 11px;
+                    min-height: 18px;
                     position: relative;
                 }
                 .element-item:hover {
@@ -211,12 +247,11 @@ const vuePanel = {
                     background: rgba(66, 165, 245, 0.2);
                 }
                 .element-icon {
-                    font-size: 14px;
-                    width: 16px;
+                    font-size: 13px;
+                    width: 14px;
                     text-align: center;
                     flex-shrink: 0;
-                    position: absolute;
-                    left: 2px;
+                    margin-right: 2px;
                 }
                 .element-name {
                     flex: 1;
@@ -288,7 +323,7 @@ const vuePanel = {
                         <div class="tooltip-content">
                             <div><strong>{{ section.slot }}</strong></div>
                             <div style="margin-top: 4px; font-size: 11px;">
-                                <div v-for="element in section.elements.slice(0, 10)" :key="element.uuid">
+                                <div v-for="element in getFlattenedElementList(section.elements).slice(0, 10)" :key="element.uuid">
                                     • {{ element.name }}
                                 </div>
                                 <div v-if="section.elements.length > 10" style="margin-top: 4px; opacity: 0.7;">
@@ -302,6 +337,7 @@ const vuePanel = {
                             :key="element.uuid"
                             :class="{ selected: isSelected(element), 'recently-imported': isRecentlyImported(element) }"
                             class="element-item"
+                            :style="{ paddingLeft: (getElementIndent(element, section.elements) * 12 + 4) + 'px' }"
                             @click="selectElement(element)"
                             :title="getElementTooltip(element)">
                             
@@ -365,6 +401,32 @@ const vuePanel = {
                 parts.push(`Step Parent: ${element.stepParentName}`);
             }
             return parts.join(' | ');
+        },
+        /**
+         * Gets a flattened list of element names (for tooltip display).
+         * @param elements Array of elements to flatten.
+         * @returns Array of elements in a flat list.
+         */
+        getFlattenedElementList(elements: any[]): any[] {
+            // Return elements in a simple flat list, sorted by name for consistency
+            return [...elements].sort((a, b) => {
+                const nameA = (a.name || '').toLowerCase();
+                const nameB = (b.name || '').toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+        },
+        /**
+         * Calculates the indentation level for an element based on its depth in the hierarchy.
+         * Indentation is normalized so the shallowest element starts at 0.
+         * @param element The element to calculate indentation for.
+         * @param allElements All elements in the section (to find min depth).
+         * @returns The indentation level (0 = shallowest element, increases with relative depth).
+         */
+        getElementIndent(element: any, allElements: any[]): number {
+            const minDepth = getMinDepth(allElements);
+            const elementDepth = getElementDepth(element);
+            // Normalize: subtract minDepth so shallowest element is at 0
+            return elementDepth - minDepth;
         },
         /**
          * Exports the given elements to a .bbmodel file.
