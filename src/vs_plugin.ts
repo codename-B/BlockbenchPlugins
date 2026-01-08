@@ -20,6 +20,7 @@ import "./mods/settingsMod";
 import "./mods/legacyFormatConverterMod";
 import "./mods/nodePreviewControllerMod";
 import "./mods/attachmentsMod";
+import "./mods/ikMod";
 
 BBPlugin.register(PACKAGE.name, {
     title: PACKAGE.title,

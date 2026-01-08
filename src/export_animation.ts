@@ -14,15 +14,26 @@ export function export_animations(): Array<VS_Animation> {
         return [];
     }
 
+    // Track animations with non-linear interpolations for warning
+    const animationsWithNonLinearInterpolation: string[] = [];
+
     (Animation as unknown as typeof _Animation).all.forEach(animation => {
         const keyframes: Record<number,VS_Keyframe> = {};
         const fps = util.fps;
         const animators = Object.values(animation.animators || {});
+        let hasNonLinearInterpolation = false;
+
         animators.forEach(animator => {
             if (animator.keyframes.length > 0 && animator.type === 'bone') {
                 const bone_name = animator.name;
 
                 animator.keyframes.forEach(kf => {
+                    // Check if keyframe uses non-linear interpolation
+                    // VS only supports linear interpolation, so warn if other types are used
+                    if (kf.interpolation && kf.interpolation !== 'linear') {
+                        hasNonLinearInterpolation = true;
+                    }
+
                     const frame = Math.round(kf.time * fps);
                     keyframes[frame] = keyframes[frame] || { frame, elements: {} };
                     keyframes[frame].elements[bone_name] = keyframes[frame].elements[bone_name] || {};
@@ -80,8 +91,16 @@ export function export_animations(): Array<VS_Animation> {
 
         if (vsAnimation.keyframes.length > 0) {
             animations.push(vsAnimation);
+            if (hasNonLinearInterpolation) {
+                animationsWithNonLinearInterpolation.push(animation.name);
+            }
         }
     });
+
+    // Warn user if any animations use non-linear interpolations
+    if (animationsWithNonLinearInterpolation.length > 0) {
+        display_interpolation_warning(animationsWithNonLinearInterpolation);
+    }
 
     return animations;
 }
@@ -110,5 +129,21 @@ function display_animation_length_warning(animation_name: string) {
             `The animation "${animation_name}" has keyframes on the last frame. ` +
             `This is not supported by Vintage Story, so the animation length was inceased by 1. ` +
             `If you want to prevent this, please move the keyframes away from the last frame.`
+    });
+}
+
+function display_interpolation_warning(animation_names: string[]) {
+    const animationList = animation_names.length === 1 
+        ? `"${animation_names[0]}"` 
+        : animation_names.map(name => `"${name}"`).join(', ');
+    
+    Blockbench.showMessageBox({
+        title: 'Interpolation Warning',
+        message: 
+            `The following animation(s) use non-linear interpolation: ${animationList}\n\n` +
+            `Vintage Story only supports linear interpolation between keyframes. ` +
+            `All keyframes will be exported with linear interpolation, which may change ` +
+            `the animation's appearance. Consider adding more keyframes to approximate ` +
+            `the desired easing curves, or use linear interpolation in Blockbench.`
     });
 }

@@ -1,6 +1,6 @@
 import { exportAttachmentsVS } from './export_attachment_vs';
 import { exportAttachmentsBB } from './export_attachment_bb';
-import { deleteSection } from './delete_section';
+import { deleteSection, deleteSectionSafe } from './delete_section';
 import { findAttachments } from './discovery';
 import { DISCOVERY_DEBOUNCE_MS, MIN_TOUCH_TARGET_SIZE, QUICK_MESSAGE_DURATION } from './constants';
 import { getActiveSlotNames } from './presets';
@@ -158,7 +158,7 @@ const vuePanel = {
                     gap: 3px;
                     padding: 1px 6px;
                     border-radius: 10px;
-                    font-size: 10px;
+                    font-size: 9px;
                     font-weight: 500;
                     line-height: 1.3;
                     flex-shrink: 0;
@@ -176,7 +176,7 @@ const vuePanel = {
                     flex-shrink: 0;
                 }
                 .section-stats {
-                    font-size: 9px;
+                    font-size: 8px;
                     color: rgba(255, 255, 255, 0.5);
                     margin-left: 4px;
                     flex-shrink: 0;
@@ -303,10 +303,8 @@ const vuePanel = {
                             </i>
                             <span class="slot-badge" :style="{ backgroundColor: getSlotInfo(section.slot).color + '40', color: getSlotInfo(section.slot).color }">
                                 <i class="material-icons slot-icon">{{ getSlotInfo(section.slot).icon }}</i>
-                                {{ section.slot }}
+                                {{ section.slot }}: {{ section.elements.length }} {{ getSectionStats(section.elements) }}
                             </span>
-                            <span class="section-stats">{{ getSectionStats(section.elements) }}</span>
-                            <span class="attachment-count">{{ section.elements.length }}</span>
                             
                             <span class="section-buttons">
                                 <i class="material-icons" @click.stop="selectSection(section.elements)" title="Select all elements in this section">select_all</i>
@@ -317,7 +315,8 @@ const vuePanel = {
                                 <i class="material-icons" @click.stop="exportBB(section.elements)" title="Export to .bbmodel">save</i>
                                 <i class="material-icons" @click.stop="exportVS(section.elements)" title="Export as VS .json">file_download</i>
                                 <span class="action-divider"></span>
-                                <i class="material-icons" @click.stop="confirmDelete(section.elements, section.slot)" title="Delete all elements in this section" style="color: #f44336;">delete</i>
+                                <i class="material-icons" @click.stop="confirmDeleteMinusRoot(section.elements, section.slot)" title="Delete (-) Root: Delete attachments but preserve root groups" style="color: #4caf50;">remove_circle_outline</i>
+                                <i class="material-icons" @click.stop="confirmDelete(section.elements, section.slot)" title="Delete all elements in this section (including root groups)" style="color: #f44336;">delete</i>
                             </span>
                         </h2>
                         <div class="tooltip-content">
@@ -367,15 +366,16 @@ const vuePanel = {
             return getSlotInfo(slot);
         },
         /**
-         * Gets section statistics (groups vs cubes)
+         * Gets section statistics (groups vs cubes) in format: (5 Groups, 2 Cubes)
          */
         getSectionStats(elements: any[]): string {
             const groups = elements.filter(e => e instanceof Group).length;
             const cubes = elements.filter(e => e instanceof Cube).length;
             const parts: string[] = [];
-            if (groups > 0) parts.push(`${groups} group${groups !== 1 ? 's' : ''}`);
-            if (cubes > 0) parts.push(`${cubes} cube${cubes !== 1 ? 's' : ''}`);
-            return parts.join(', ') || '0 items';
+            if (groups > 0) parts.push(`${groups} Group${groups !== 1 ? 's' : ''}`);
+            if (cubes > 0) parts.push(`${cubes} Cube${cubes !== 1 ? 's' : ''}`);
+            if (parts.length === 0) return '(0 items)';
+            return `(${parts.join(', ')})`;
         },
         /**
          * Checks if element was recently imported
@@ -469,10 +469,18 @@ const vuePanel = {
             }
         },
         /**
-         * Confirms deletion before deleting section
+         * Confirms delete minus root (preserves root attachment groups and base model groups)
+         */
+        confirmDeleteMinusRoot(elements: any[], slotName: string) {
+            if (confirm(`Delete (-) Root in "${slotName}"?\n\nThis will delete attachment content but preserve:\n- Base model groups (like "Ears")\n- Root attachment groups (first level with clothingSlot)\n\nThis action cannot be undone.`)) {
+                deleteSectionSafe(elements);
+            }
+        },
+        /**
+         * Confirms deletion before deleting section (original behavior - deletes everything)
          */
         confirmDelete(elements: any[], slotName: string) {
-            if (confirm(`Are you sure you want to delete all ${elements.length} attachment(s) in "${slotName}"?\n\nThis action cannot be undone.`)) {
+            if (confirm(`Are you sure you want to delete all ${elements.length} attachment(s) in "${slotName}"?\n\nThis will delete everything including base model groups.\n\nThis action cannot be undone.`)) {
                 deleteSection(elements);
             }
         },
