@@ -2,9 +2,14 @@
 import { inferClothingSlotFromPath } from './presets';
 import { showClothingSlotDialog } from './dialogs';
 import { findAllGroupsByName, findGroupByName, stripNumericSuffix, collectGroupsDepthFirst, isDescendantOf } from '../util/outliner';
-
+import { QUICK_MESSAGE_DURATION } from './constants';
+import { markAsRecentlyImported } from './panel';
 
 const DEBUG = false;
+
+function logDebug(message: string, ...args: any[]) {
+    if (DEBUG) console.log(message, ...args);
+}
 
 /**
  * Finds a group in the existing model that matches the given clothing slot.
@@ -66,8 +71,9 @@ function findBestMatchingGroupBySlot(clothingSlot: string, groupName: string | n
  * @param elementsBefore A `Set` of all elements that existed before the import.
  * @param filePath Path to the first imported file, used for clothing slot inference.
  * @param logPrefix A prefix for console log messages (e.g., "Import BB").
+ * @param model Optional model data for import preview dialog.
  */
-export async function processImportedAttachments(elementsBefore: Set<any>, filePath: string, logPrefix: string) {
+export async function processImportedAttachments(elementsBefore: Set<any>, filePath: string, logPrefix: string, model?: any) {
     const elementsAfter = new Set([...Group.all, ...Cube.all]);
     const newElements = [...elementsAfter].filter(e => !elementsBefore.has(e));
     const newElementsSet = new Set(newElements);
@@ -102,7 +108,7 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
                 try {
                     child.addTo(matchedGroup);
                 } catch (e) {
-                    console.error(`[${logPrefix}] Failed to move "${child.name}" to matched group "${matchedGroup.name}":`, e);
+                    if (DEBUG) console.error(`[${logPrefix}] Failed to move "${child.name}" to matched group "${matchedGroup.name}":`, e);
                 }
             });
 
@@ -122,9 +128,11 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
 
     // Display matching table if any matches were found
     if (matchingTable.length > 0) {
-        console.log(`[${logPrefix}] Smart Matching Results:`);
-        console.table(matchingTable);
-        Blockbench.showQuickMessage(`Matched ${matchingTable.length} attachment group(s) to existing model`, 3000);
+        if (DEBUG) {
+            logDebug(`[${logPrefix}] Smart Matching Results:`);
+            console.table(matchingTable);
+        }
+        Blockbench.showQuickMessage(`Matched ${matchingTable.length} attachment group(s) to existing model`, QUICK_MESSAGE_DURATION);
     }
 
     // STEP 1.5: Parent Matching by Group Name (for groups with same name as existing)
@@ -154,7 +162,7 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
                 try {
                     child.addTo(existingMatch);
                 } catch (e) {
-                    console.error(`[${logPrefix}] Failed to move "${child.name}" to existing "${existingMatch.name}":`, e);
+                    if (DEBUG) console.error(`[${logPrefix}] Failed to move "${child.name}" to existing "${existingMatch.name}":`, e);
                 }
             });
 
@@ -194,7 +202,7 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
                     element.addTo(parentGroup);
                     if (DEBUG) console.log(`[${logPrefix}] Reparented "${element.name}" under "${stepParentName}" in outliner (keeping stepParentName for mesh positioning)`);
                 } catch (e) {
-                    console.error(`[${logPrefix}] Failed to reparent "${element.name}" to "${stepParentName}":`, e);
+                    if (DEBUG) console.error(`[${logPrefix}] Failed to reparent "${element.name}" to "${stepParentName}":`, e);
                 }
             }
         }
@@ -225,7 +233,7 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
                     try {
                         child.addTo(originalGroup);
                     } catch (e) {
-                        console.error(`[${logPrefix}] Failed to move "${child.name}" to "${originalGroup.name}":`, e);
+                        if (DEBUG) console.error(`[${logPrefix}] Failed to move "${child.name}" to "${originalGroup.name}":`, e);
                     }
                 });
                 groupsToDelete.push(group);
@@ -236,7 +244,8 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
 
     // STEP 4: Apply Clothing Slot - Show dialog and apply user's selection
     const inferredSlot = inferClothingSlotFromPath(filePath);
-    const masterClothingSlot = await showClothingSlotDialog(inferredSlot, filePath);
+    const result = await showClothingSlotDialog(inferredSlot, filePath, model);
+    const masterClothingSlot = result.slot;
 
     if (masterClothingSlot) {
         if (DEBUG) console.log(`[${logPrefix}] Applying user-selected clothing slot "${masterClothingSlot}" to ${newElements.length} new elements.`);
@@ -260,7 +269,15 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
 
         if (DEBUG) console.log(`[${logPrefix}] Found ${topLevelNewElements.length} top-level new elements to process`);
 
-        topLevelNewElements.forEach(element => applySlotRecursive(element, masterClothingSlot));
+        topLevelNewElements.forEach(element => {
+            applySlotRecursive(element, masterClothingSlot);
+            // Mark as recently imported
+            markAsRecentlyImported(element);
+            // Also mark all children
+            if (element.children) {
+                element.children.forEach((child: any) => markAsRecentlyImported(child));
+            }
+        });
     } else {
         // User cancelled - remove all imported elements to prevent orphaned attachments
         if (DEBUG) console.log(`[${logPrefix}] User cancelled clothing slot selection, removing ${newElements.length} imported elements`);
@@ -270,14 +287,14 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
             try {
                 element.remove();
             } catch (e) {
-                console.error(`[${logPrefix}] Failed to remove element "${element.name}":`, e);
+                if (DEBUG) console.error(`[${logPrefix}] Failed to remove element "${element.name}":`, e);
             }
         });
 
-        Blockbench.showQuickMessage('Import cancelled - no elements added', 2000);
+        Blockbench.showQuickMessage('Import cancelled - no elements added', QUICK_MESSAGE_DURATION);
     }
 
-    Undo.finishEdit('Import and parent attachment');
+    Undo.finishEdit(`Import and parent attachment: ${filePath.split(/[/\\]/).pop() || 'attachment'}`);
     Canvas.updateAll();
     updateSelection?.();
 }

@@ -3,10 +3,15 @@ import { traverse } from '../export_model/traverse';
 import * as props from "../property";
 import * as util from '../util';
 import { VS_Element } from '../vs_shape_def';
+import { QUICK_MESSAGE_DURATION } from './constants';
 
 const fs = requireNativeModule('fs');
 
 const DEBUG = false;
+
+function logDebug(message: string, ...args: any[]) {
+    if (DEBUG) console.log(message, ...args);
+}
 
 /**
  * Populates textureSizes and textures from the current project.
@@ -125,7 +130,7 @@ function getStepParentName(group: Group): string | null {
  */
 export function exportAttachmentsVS(selection: Group[]) {
     if (!selection || selection.length === 0) {
-        alert("Please select one or more attachments to export.");
+        Blockbench.showQuickMessage("Please select one or more attachments to export.", QUICK_MESSAGE_DURATION);
         return;
     }
 
@@ -160,7 +165,7 @@ export function exportAttachmentsVS(selection: Group[]) {
 
         const parentClothingSlot = (parent as any).clothingSlot;
         if (!parentClothingSlot || parentClothingSlot.trim() === '' || parentClothingSlot !== myClothingSlot) {
-            if (DEBUG) console.log(`[VS Attachment Export] "${element.name}" is a root attachment (parent has different/no clothingSlot)`);
+                logDebug(`[VS Attachment Export] "${element.name}" is a root attachment (parent has different/no clothingSlot)`);
             return true; // Parent has different or no clothingSlot = root attachment
         }
 
@@ -168,15 +173,15 @@ export function exportAttachmentsVS(selection: Group[]) {
         // treat this group as a root attachment (allows exporting nested groups independently)
         const parentInSelection = parent instanceof Group && selection.includes(parent);
         if (!parentInSelection) {
-            if (DEBUG) console.log(`[VS Attachment Export] "${element.name}" is a root attachment (parent not in selection)`);
+            logDebug(`[VS Attachment Export] "${element.name}" is a root attachment (parent not in selection)`);
             return true;
         }
 
-        if (DEBUG) console.log(`[VS Attachment Export] Skipping "${element.name}" - child of attachment with same clothingSlot that is also selected`);
+        logDebug(`[VS Attachment Export] Skipping "${element.name}" - child of attachment with same clothingSlot that is also selected`);
         return false; // Parent has same clothingSlot and is selected = child attachment
     });
 
-    if (DEBUG) console.log(`[VS Attachment Export] Filtered ${selection.length} elements to ${rootAttachments.length} root attachments`);
+    logDebug(`[VS Attachment Export] Filtered ${selection.length} elements to ${rootAttachments.length} root attachments`);
 
     try {
         // Process each root attachment group with its own relative offset
@@ -196,7 +201,7 @@ export function exportAttachmentsVS(selection: Group[]) {
                     // Stop when we find a parent with a different (or no) clothingSlot
                     if (!parentClothingSlot || parentClothingSlot.trim() === '' || parentClothingSlot !== myClothingSlot) {
                         stepParentName = currentParent.name;
-                        if (DEBUG) console.log(`[VS Attachment Export] Found first non-matching parent for "${group.name}": "${stepParentName}"`);
+                        logDebug(`[VS Attachment Export] Found first non-matching parent for "${group.name}": "${stepParentName}"`);
                         break;
                     }
                     currentParent = currentParent.parent;
@@ -208,10 +213,10 @@ export function exportAttachmentsVS(selection: Group[]) {
                 if (!originalStepParent || originalStepParent.trim() === '') {
                     (group as any).stepParentName = stepParentName;
                     modifiedGroups.push(group);
-                    if (DEBUG) console.log(`[VS Attachment Export] Set stepParentName="${stepParentName}" on "${group.name}"`);
+                    logDebug(`[VS Attachment Export] Set stepParentName="${stepParentName}" on "${group.name}"`);
                 }
             } else {
-                console.warn(`Could not determine a step-parent for attachment: ${group.name}`);
+                if (DEBUG) console.warn(`Could not determine a step-parent for attachment: ${group.name}`);
             }
 
             // Find the parent group to make the attachment's position relative
@@ -224,7 +229,7 @@ export function exportAttachmentsVS(selection: Group[]) {
                 // Adjust the offset by subtracting the parent's absolute position.
                 // This makes the attachment's root position relative to its parent.
                 offset = util.vector_sub(offset, parentGroup.origin);
-                if (DEBUG) console.log(`[VS Attachment Export] Calculated offset for "${group.name}" relative to "${stepParentName}": [${offset.join(', ')}]`);
+                logDebug(`[VS Attachment Export] Calculated offset for "${group.name}" relative to "${stepParentName}": [${offset.join(', ')}]`);
             }
 
             // Use the main model traversal logic to process the attachment
@@ -264,7 +269,7 @@ export function exportAttachmentsVS(selection: Group[]) {
                         data.textures = existingData.textures;
                     }
 
-                    if (DEBUG) console.log('[VS Attachment Export] Preserved textureSizes and textures from existing file');
+                    logDebug('[VS Attachment Export] Preserved textureSizes and textures from existing file');
                 } catch (e) {
                     console.error('[VS Attachment Export] Error reading existing file:', e);
                     // Warn user about malformed JSON

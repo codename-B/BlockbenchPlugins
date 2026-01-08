@@ -1,24 +1,24 @@
+import { QUICK_MESSAGE_DURATION } from './constants';
+
 /**
  * Deletes all attachments within a given section.
  * @param {Array<Group|Cube>} elements - An array of attachment groups/elements in the section to be deleted.
  */
 export function deleteSection(elements: any[]) {
     if (!elements || elements.length === 0) {
-        alert("There are no attachments in this section to delete.");
+        Blockbench.showQuickMessage("There are no attachments in this section to delete.", QUICK_MESSAGE_DURATION);
         return;
     }
 
-    const confirmed = confirm(`Are you sure you want to delete all ${elements.length} attachments in this section?`);
+    // Confirmation is handled in panel.ts confirmDelete method
+    Undo.initEdit({ outliner: true }, `Delete ${elements.length} attachment(s)`);
 
-    if (confirmed) {
-        Undo.initEdit({ outliner: true });
+    // The 'elements' array from the panel is the definitive list of top-level attachments for this section.
+    // Blockbench's .remove() method handles removing children automatically, regardless of their properties.
+    elements.forEach(element => element.remove());
 
-        // The 'elements' array from the panel is the definitive list of top-level attachments for this section.
-        // Blockbench's .remove() method handles removing children automatically, regardless of their properties.
-        elements.forEach(element => element.remove());
-
-        Undo.finishEdit('delete attachment section');
-        
-        Blockbench.dispatchEvent('attachments_changed', {});
-    }
+    Undo.finishEdit(`Delete ${elements.length} attachment(s)`);
+    
+    Blockbench.dispatchEvent('attachments_changed', {});
+    Blockbench.showQuickMessage(`Deleted ${elements.length} attachment(s)`, QUICK_MESSAGE_DURATION);
 }

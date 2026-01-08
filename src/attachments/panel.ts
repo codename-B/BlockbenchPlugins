@@ -2,6 +2,39 @@ import { exportAttachmentsVS } from './export_attachment_vs';
 import { exportAttachmentsBB } from './export_attachment_bb';
 import { deleteSection } from './delete_section';
 import { findAttachments } from './discovery';
+import { DISCOVERY_DEBOUNCE_MS, MIN_TOUCH_TARGET_SIZE, QUICK_MESSAGE_DURATION } from './constants';
+import { getActiveSlotNames } from './presets';
+import { getSlotInfo, getSlotCategory } from './slot_helpers';
+
+const DEBUG = false;
+
+function logDebug(message: string, ...args: any[]) {
+    if (DEBUG) console.log(message, ...args);
+}
+
+// Track recently imported elements (within last 5 minutes)
+const RECENT_IMPORT_THRESHOLD = 5 * 60 * 1000; // 5 minutes in ms
+const recentImports = new Map<any, number>();
+
+// Mark element as recently imported
+export function markAsRecentlyImported(element: any) {
+    recentImports.set(element, Date.now());
+    // Clean up old entries periodically
+    if (recentImports.size > 100) {
+        const now = Date.now();
+        for (const [el, time] of recentImports.entries()) {
+            if (now - time > RECENT_IMPORT_THRESHOLD) {
+                recentImports.delete(el);
+            }
+        }
+    }
+}
+
+function isRecentlyImported(element: any): boolean {
+    const time = recentImports.get(element);
+    if (!time) return false;
+    return Date.now() - time < RECENT_IMPORT_THRESHOLD;
+}
 
 /**
  * Creates a debounced function that delays invoking the provided function
@@ -50,7 +83,167 @@ function updateOutlinerSelection(elements: any[]) {
 
 const vuePanel = {
     template: `
-        <div>
+        <div class="attachments-panel">
+            <style>
+                .attachments-panel {
+                    padding: 0;
+                }
+                .attachment-section {
+                    margin: 0;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                }
+                .attachment-section:last-child {
+                    border-bottom: none;
+                }
+                .attachment-section h2 {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 8px;
+                    margin: 0;
+                    cursor: pointer;
+                    user-select: none;
+                    position: relative;
+                    font-size: 13px;
+                    font-weight: 500;
+                    min-height: 32px;
+                }
+                .attachment-section h2:hover {
+                    background: rgba(255, 255, 255, 0.05);
+                }
+                .expand_icon {
+                    font-size: 18px !important;
+                    width: 18px;
+                    flex-shrink: 0;
+                }
+                .slot-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 3px;
+                    padding: 1px 6px;
+                    border-radius: 10px;
+                    font-size: 10px;
+                    font-weight: 500;
+                    line-height: 1.3;
+                    flex-shrink: 0;
+                }
+                .slot-icon {
+                    font-size: 12px;
+                }
+                .attachment-count {
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 1px 5px;
+                    border-radius: 8px;
+                    font-size: 10px;
+                    font-weight: 500;
+                    margin-left: auto;
+                    flex-shrink: 0;
+                }
+                .section-stats {
+                    font-size: 9px;
+                    color: rgba(255, 255, 255, 0.5);
+                    margin-left: 4px;
+                    flex-shrink: 0;
+                }
+                .section-buttons {
+                    display: flex;
+                    gap: 2px;
+                    margin-left: auto;
+                    align-items: center;
+                    flex-shrink: 0;
+                }
+                .section-buttons .material-icons {
+                    width: 24px;
+                    height: 24px;
+                    min-width: 24px;
+                    min-height: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    border-radius: 3px;
+                    font-size: 16px;
+                    transition: background 0.15s;
+                    padding: 0;
+                }
+                .section-buttons .material-icons:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                }
+                .section-buttons .action-group {
+                    display: flex;
+                    gap: 1px;
+                    padding: 0 2px;
+                    border-left: 1px solid rgba(255, 255, 255, 0.08);
+                }
+                .section-buttons .action-group:first-child {
+                    border-left: none;
+                }
+                .element-list {
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                    padding-left: 4px;
+                }
+                .element-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 2px 6px 2px 20px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    min-height: 22px;
+                    position: relative;
+                }
+                .element-item:hover {
+                    background: rgba(255, 255, 255, 0.05);
+                }
+                .element-item.selected {
+                    background: rgba(66, 165, 245, 0.2);
+                }
+                .element-icon {
+                    font-size: 14px;
+                    width: 16px;
+                    text-align: center;
+                    flex-shrink: 0;
+                    position: absolute;
+                    left: 2px;
+                }
+                .element-name {
+                    flex: 1;
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .modified-indicator {
+                    color: #ff9800;
+                    font-size: 10px;
+                    margin-left: 2px;
+                    flex-shrink: 0;
+                }
+                .tooltip-content {
+                    display: none;
+                    position: absolute;
+                    background: rgba(0, 0, 0, 0.95);
+                    color: white;
+                    padding: 6px 10px;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    z-index: 1000;
+                    max-width: 280px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                    pointer-events: none;
+                    top: 100%;
+                    left: 0;
+                    margin-top: 2px;
+                }
+                .section-header-wrapper {
+                    position: relative;
+                }
+                .section-header-wrapper:hover .tooltip-content {
+                    display: block;
+                }
+            </style>
             <div v-if="sections.every(s => s.elements.length === 0)" class="panel_placeholder">
                 <i class="material-icons">folder</i>
                 <p>No attachments found in model.</p>
@@ -58,65 +251,162 @@ const vuePanel = {
             </div>
             <div v-else>
                 <div v-for="section in sections.filter(s => s.elements.length > 0)" :key="section.slot" class="attachment-section">
-                    <h2 @click="toggleSection(section.slot)" :class="{ collapsed: !isSectionOpen(section.slot) }">
-                        <i class="material-icons expand_icon">
-                        {{ isSectionOpen(section.slot) ? 'arrow_drop_down' : 'arrow_right' }}
-                        </i>
-                        {{ section.slot }}
-                        <span class="attachment-count">{{ section.elements.length }}</span>
-                        
-                        <span class="section-buttons">
-                            <i class="material-icons" @click.stop="selectSection(section.elements)" title="Select all elements in this section">select_all</i>
-                            <i class="material-icons" @click.stop="toggleVisibility(section.elements, !getSectionVisibility(section.elements))" :title="getSectionVisibility(section.elements) ? 'Hide all elements in this section' : 'Show all elements in this section'">
-                                {{ getSectionVisibility(section.elements) ? 'visibility' : 'visibility_off' }}
+                    <div class="section-header-wrapper" style="position: relative;">
+                        <h2 @click="toggleSection(section.slot)" :class="{ collapsed: !isSectionOpen(section.slot) }">
+                            <i class="material-icons expand_icon">
+                                {{ isSectionOpen(section.slot) ? 'arrow_drop_down' : 'arrow_right' }}
                             </i>
-                            <i class="material-icons" @click.stop="exportBB(section.elements)" title="Export to .bbmodel">save</i>
-                            <i class="material-icons" @click.stop="exportVS(section.elements)" title="Export as VS .json">file_download</i>
-                            <i class="material-icons" @click.stop="deleteSection(section.elements)" title="Delete all elements in this section">delete</i>
-                        </span>
-                    </h2>
-                    <ul v-if="isSectionOpen(section.slot)">
-                        <li v-for="element in section.elements" 
-                            :key="element.uuid"
-                            :class="{ selected: isSelected(element) }"
-                            class="outliner_object"
-                            @click="selectElement(element)">
-                            
-                            <span class="outliner_object_name">
-                                <i class="icon material-icons">{{ getIcon(element) }}</i>
-                                {{ element.name }}
+                            <span class="slot-badge" :style="{ backgroundColor: getSlotInfo(section.slot).color + '40', color: getSlotInfo(section.slot).color }">
+                                <i class="material-icons slot-icon">{{ getSlotInfo(section.slot).icon }}</i>
+                                {{ section.slot }}
                             </span>
-                        </li>
-                    </ul>
+                            <span class="section-stats">{{ getSectionStats(section.elements) }}</span>
+                            <span class="attachment-count">{{ section.elements.length }}</span>
+                            
+                            <span class="section-buttons">
+                                <div class="action-group">
+                                    <i class="material-icons" @click.stop="selectSection(section.elements)" title="Select all elements in this section">select_all</i>
+                                    <i class="material-icons" @click.stop="toggleVisibility(section.elements, !getSectionVisibility(section.elements))" :title="getSectionVisibility(section.elements) ? 'Hide all elements in this section' : 'Show all elements in this section'">
+                                        {{ getSectionVisibility(section.elements) ? 'visibility' : 'visibility_off' }}
+                                    </i>
+                                </div>
+                                <div class="action-group">
+                                    <i class="material-icons" @click.stop="exportBB(section.elements)" title="Export to .bbmodel">save</i>
+                                    <i class="material-icons" @click.stop="exportVS(section.elements)" title="Export as VS .json">file_download</i>
+                                </div>
+                                <div class="action-group">
+                                    <i class="material-icons" @click.stop="confirmDelete(section.elements, section.slot)" title="Delete all elements in this section" style="color: #f44336;">delete</i>
+                                </div>
+                            </span>
+                        </h2>
+                        <div class="tooltip-content">
+                            <div><strong>{{ section.slot }}</strong></div>
+                            <div style="margin-top: 4px; font-size: 11px;">
+                                <div v-for="element in section.elements.slice(0, 10)" :key="element.uuid">
+                                    • {{ element.name }}
+                                </div>
+                                <div v-if="section.elements.length > 10" style="margin-top: 4px; opacity: 0.7;">
+                                    ... and {{ section.elements.length - 10 }} more
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="isSectionOpen(section.slot)" class="element-list">
+                        <div v-for="element in section.elements" 
+                            :key="element.uuid"
+                            :class="{ selected: isSelected(element), 'recently-imported': isRecentlyImported(element) }"
+                            class="element-item"
+                            @click="selectElement(element)"
+                            :title="getElementTooltip(element)">
+                            
+                            <i class="material-icons element-icon" :style="{ color: element instanceof Group ? '#64b5f6' : '#81c784' }">
+                                {{ getIcon(element) }}
+                            </i>
+                            <span class="element-name">
+                                {{ element.name }}
+                                <span v-if="isRecentlyImported(element)" class="modified-indicator" title="Recently imported">●</span>
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     `,
     data: () => ({
         sections: [],
-        openSections: []
+        openSections: [],
+        hoveredSection: null as string | null
     }),
     methods: {
+        /**
+         * Gets slot information for styling
+         */
+        getSlotInfo(slot: string) {
+            return getSlotInfo(slot);
+        },
+        /**
+         * Gets section statistics (groups vs cubes)
+         */
+        getSectionStats(elements: any[]): string {
+            const groups = elements.filter(e => e instanceof Group).length;
+            const cubes = elements.filter(e => e instanceof Cube).length;
+            const parts: string[] = [];
+            if (groups > 0) parts.push(`${groups} group${groups !== 1 ? 's' : ''}`);
+            if (cubes > 0) parts.push(`${cubes} cube${cubes !== 1 ? 's' : ''}`);
+            return parts.join(', ') || '0 items';
+        },
+        /**
+         * Checks if element was recently imported
+         */
+        isRecentlyImported(element: any): boolean {
+            return isRecentlyImported(element);
+        },
+        /**
+         * Gets tooltip text for an element
+         */
+        getElementTooltip(element: any): string {
+            const parts: string[] = [];
+            parts.push(element.name || 'Unnamed');
+            if (element instanceof Group) {
+                parts.push(`Group (${element.children?.length || 0} children)`);
+            } else {
+                parts.push('Cube');
+            }
+            if (element.clothingSlot) {
+                parts.push(`Slot: ${element.clothingSlot}`);
+            }
+            if (element.stepParentName) {
+                parts.push(`Step Parent: ${element.stepParentName}`);
+            }
+            return parts.join(' | ');
+        },
         /**
          * Exports the given elements to a .bbmodel file.
          * @param {Array<Group | Cube>} elements The elements to export.
          */
         exportBB(elements: any[]) {
-            exportAttachmentsBB(elements);
+            try {
+                (this as any).isExporting = true;
+                exportAttachmentsBB(elements);
+                // Note: exportAttachmentsBB uses Blockbench.export which is async but doesn't return a promise
+                // The success message will be shown after the export dialog completes
+                setTimeout(() => {
+                    (this as any).isExporting = false;
+                }, 100);
+            } catch (e) {
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                Blockbench.showQuickMessage(`Export failed: ${errorMsg}`, QUICK_MESSAGE_DURATION);
+                if (DEBUG) console.error('Export BB error:', e);
+                (this as any).isExporting = false;
+            }
         },
         /**
          * Exports the given elements to a Vintage Story .json file.
          * @param {Array<Group | Cube>} elements The elements to export.
          */
         exportVS(elements: any[]) {
-            exportAttachmentsVS(elements);
+            try {
+                (this as any).isExporting = true;
+                exportAttachmentsVS(elements);
+                // Note: exportAttachmentsVS uses Blockbench.export which is async but doesn't return a promise
+                // The success message will be shown after the export dialog completes
+                setTimeout(() => {
+                    (this as any).isExporting = false;
+                }, 100);
+            } catch (e) {
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                Blockbench.showQuickMessage(`Export failed: ${errorMsg}`, QUICK_MESSAGE_DURATION);
+                if (DEBUG) console.error('Export VS error:', e);
+                (this as any).isExporting = false;
+            }
         },
         /**
-         * Deletes the given elements from the project.
-         * @param {Array<Group | Cube>} elements The elements to delete.
+         * Confirms deletion before deleting section
          */
-        deleteSection(elements: any[]) {
-            deleteSection(elements);
+        confirmDelete(elements: any[], slotName: string) {
+            if (confirm(`Are you sure you want to delete all ${elements.length} attachment(s) in "${slotName}"?\n\nThis action cannot be undone.`)) {
+                deleteSection(elements);
+            }
         },
         /**
          * Updates the list of attachments by calling the discovery function.
@@ -168,23 +458,32 @@ const vuePanel = {
         toggleVisibility(elements: any[], isVisible: boolean) {
             if (!elements || !Array.isArray(elements)) return;
 
-            elements.forEach(element => {
-                if (!element) return;
-                try {
-                    (this as any)._walk(element, (node: any) => {
-                        if (!node) return;
-                        if (typeof node.toggleVisibility === 'function') {
-                            if (node.visibility !== isVisible) node.toggleVisibility(isVisible);
-                        } else if ('visibility' in node) {
-                            node.visibility = isVisible;
-                        }
-                    });
-                } catch (e) {
-                    console.warn('Error toggling visibility for element:', element?.name, e);
-                }
-            });
-            Canvas.updateVisibility?.();
-            Canvas.updateAll?.();
+            try {
+                Undo.initEdit({ outliner: true }, `Toggle visibility: ${elements.length} element(s)`);
+                
+                elements.forEach(element => {
+                    if (!element) return;
+                    try {
+                        (this as any)._walk(element, (node: any) => {
+                            if (!node) return;
+                            if (typeof node.toggleVisibility === 'function') {
+                                if (node.visibility !== isVisible) node.toggleVisibility(isVisible);
+                            } else if ('visibility' in node) {
+                                node.visibility = isVisible;
+                            }
+                        });
+                    } catch (e) {
+                        if (DEBUG) console.warn('Error toggling visibility for element:', element?.name, e);
+                    }
+                });
+                
+                Undo.finishEdit('Toggle visibility');
+                Canvas.updateVisibility?.();
+                Canvas.updateAll?.();
+            } catch (e) {
+                if (DEBUG) console.error('Error in toggleVisibility:', e);
+                Blockbench.showQuickMessage('Failed to toggle visibility', QUICK_MESSAGE_DURATION);
+            }
         },
         /**
          * Traverses a node and its children, applying a callback to each.
@@ -224,7 +523,7 @@ const vuePanel = {
     },
     mounted() {
         // Debounce refresh calls to avoid unnecessary updates when multiple events fire
-        (this as any).refresh = debounce(() => (this as any).updateAttachments(), 50);
+        (this as any).refresh = debounce(() => (this as any).updateAttachments(), DISCOVERY_DEBOUNCE_MS);
         (this as any).updateAttachments(); // Initial load without debounce
 
         (this as any)._bbListeners = [
