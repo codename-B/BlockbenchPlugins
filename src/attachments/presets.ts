@@ -17,21 +17,19 @@ export const GLINT_PRESET: AttachmentPreset = {
     slots: [
         'Outerwear',
         'Top',
-        'Bottom',
-        'Boot',
-        'Glove',
+        'Bottoms',
+        'Shoes',
+        'Gloves',
+        'Headwear',
         'Eyebrows',
         'Eyes',
         'Nose',
         'Mouth',
         'FacialHair',
-        'Earring',
+        'Earrings',
         'Ears',
         'FaceItem',
-        'Face',
-        'Hair Base',
-        'Hair Extra',
-        'Hair Face'
+        'Hair'
     ]
 };
 
@@ -93,24 +91,32 @@ const PATH_TO_SLOT_MAPPINGS: { [key: string]: string } = {
     'arm': 'Arm',
     'emblem': 'Emblem',
     'faceitem': 'FaceItem',
-    'hair-base': 'Hair Base',
-    'hair-extra': 'Hair Extra',
-    'hair-face': 'Hair Face',
 
     // Glint paths
     'outerwear': 'Outerwear',
     'top': 'Top',
     'bottom': 'Bottoms',
-    'boot': 'Boots',
+    'bottoms': 'Bottoms',
+    'boot': 'Shoes',
+    'boots': 'Shoes',
+    'shoes': 'Shoes',
     'glove': 'Gloves',
+    'gloves': 'Gloves',
+    'headwear': 'Headwear',
     'eyebrows': 'Eyebrows',
     'eyes': 'Eyes',
     'nose': 'Nose',
     'mouth': 'Mouth',
     'facialhair': 'FacialHair',
     'earring': 'Earrings',
+    'earrings': 'Earrings',
     'ears': 'Ears',
+
+    // Hair (shared)
     'hair': 'Hair',
+    'hair-base': 'Hair',
+    'hair-extra': 'Hair',
+    'hair-face': 'Hair',
 };
 
 /**

@@ -145,7 +145,8 @@ export function exportAttachmentsVS(selection: Group[]) {
     // Filter selection to only ROOT attachment groups
     // A root attachment is one whose parent either:
     // 1. Has no clothingSlot, OR
-    // 2. Has a different clothingSlot
+    // 2. Has a different clothingSlot, OR
+    // 3. Is explicitly selected (to allow exporting child groups independently)
     const rootAttachments = selection.filter(element => {
         const myClothingSlot = (element as any).clothingSlot;
         if (!myClothingSlot || myClothingSlot.trim() === '') {
@@ -163,8 +164,16 @@ export function exportAttachmentsVS(selection: Group[]) {
             return true; // Parent has different or no clothingSlot = root attachment
         }
 
-        if (DEBUG) console.log(`[VS Attachment Export] Skipping "${element.name}" - child of attachment with same clothingSlot`);
-        return false; // Parent has same clothingSlot = child attachment
+        // If the parent has the same clothingSlot but is NOT in the selection,
+        // treat this group as a root attachment (allows exporting nested groups independently)
+        const parentInSelection = parent instanceof Group && selection.includes(parent);
+        if (!parentInSelection) {
+            if (DEBUG) console.log(`[VS Attachment Export] "${element.name}" is a root attachment (parent not in selection)`);
+            return true;
+        }
+
+        if (DEBUG) console.log(`[VS Attachment Export] Skipping "${element.name}" - child of attachment with same clothingSlot that is also selected`);
+        return false; // Parent has same clothingSlot and is selected = child attachment
     });
 
     if (DEBUG) console.log(`[VS Attachment Export] Filtered ${selection.length} elements to ${rootAttachments.length} root attachments`);

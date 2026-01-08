@@ -9,6 +9,8 @@ const fs = requireNativeModule('fs');
 // @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
 
+declare var Settings: any;
+
 /**
  * Saves a texture to disk, respecting VS folder structure (shapes -> textures).
  * @param texture - The Blockbench texture object
@@ -125,8 +127,9 @@ export function ex(options): VS_Shape {
             }
         }
 
-        // If still no location and we have an export directory, save the texture
-        if ((!location || location === "") && exportDir) {
+        // If still no location and we have an export directory, save the texture (if enabled in settings)
+        const exportTextures = Settings.get("vs_export_textures") || false;
+        if ((!location || location === "") && exportDir && exportTextures) {
             location = saveTextureToFile(texture, textureBaseDir, textureSubPath);
         }
 

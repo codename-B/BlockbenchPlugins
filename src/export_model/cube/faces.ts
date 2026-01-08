@@ -2,14 +2,20 @@ import { VS_FACE_PROPS } from "../../property";
 import { VS_Direction, VS_Face } from "../../vs_shape_def";
 
 /**
- * Passes through UV coordinates and rotation unchanged.
- * With XYZ euler order native support, no transformation is needed.
+ * Transforms UV coordinates and rotation for export.
+ * Applies 180° rotation correction for downward-facing faces.
  * @param uv - The UV coordinates [x1, y1, x2, y2]
  * @param rotation - The face rotation in degrees (0, 90, 180, 270)
- * @returns Object with unchanged UV and rotation
+ * @param direction - The face direction
+ * @returns Object with transformed UV and rotation
  */
-function transformUV(uv: [number,number,number,number], rotation: number): { uv: [number,number,number,number], rotation: number } {
-    // Pass through unchanged to preserve flipped/mirrored UVs
+function transformUV(uv: [number, number, number, number], rotation: number, direction: VS_Direction): { uv: [number, number, number, number], rotation: number } {
+    // Apply 180° rotation for down faces to correct orientation in Vintage Story
+    if (direction === VS_Direction.DOWN) {
+        const correctedRotation = (rotation + 180) % 360;
+        return { uv, rotation: correctedRotation };
+    }
+    // Pass through unchanged for other faces
     return { uv, rotation };
 }
 
@@ -34,7 +40,7 @@ export function process_faces(faces: Partial<Record<CardinalDirection, CubeFace>
         const isUvDefault = face.uv[0] === 0 && face.uv[1] === 0 && face.uv[2] === 0 && face.uv[3] === 0;
 
         const rotation = face.rotation || 0;
-        const transformed = transformUV(face.uv, rotation);
+        const transformed = transformUV(face.uv, rotation, direction);
         const transformedUV = transformed.uv;
         const transformedRotation = transformed.rotation;
 
@@ -48,7 +54,7 @@ export function process_faces(faces: Partial<Record<CardinalDirection, CubeFace>
             snapUv: false,
         };
 
-        for(const prop of VS_FACE_PROPS) {
+        for (const prop of VS_FACE_PROPS) {
             const prop_name = prop.name;
             const value = face[prop_name];
 
@@ -77,10 +83,9 @@ export function process_faces(faces: Partial<Record<CardinalDirection, CubeFace>
  */
 function get_texture_name(face_texture: string): string {
     const texture = Texture.all.find(t => t.uuid === face_texture);
-    if(texture) {
+    if (texture) {
         return texture.name;
-    } else
-        {
+    } else {
         console.error("Texture not found for UUID:", face_texture);
         return 'missing_texture';
     }

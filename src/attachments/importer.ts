@@ -46,6 +46,12 @@ function buildTextureMap(model: BBModel): Map<TextureRef, any> {
         if (!texture) {
             texture = new Texture(texData).add();
 
+            // Preserve textureLocation if it exists in the imported data
+            if (typeof (texData as any).textureLocation === 'string') {
+                (texture as any).textureLocation = (texData as any).textureLocation;
+                logDebug(`[Import BB] Set textureLocation: ${(texData as any).textureLocation}`);
+            }
+
             // Load texture from embedded base64 or from disk path (when available)
             if (typeof texData.source === 'string' && texData.source.length > 0) {
                 texture.fromDataURL(texData.source);
@@ -60,6 +66,12 @@ function buildTextureMap(model: BBModel): Map<TextureRef, any> {
             // Update UV size for existing texture to match the imported data
             if (typeof texData.uv_width === 'number') texture.uv_width = texData.uv_width;
             if (typeof texData.uv_height === 'number') texture.uv_height = texData.uv_height;
+
+            // Update textureLocation if it exists in the imported data and isn't already set
+            if (typeof (texData as any).textureLocation === 'string' && !(texture as any).textureLocation) {
+                (texture as any).textureLocation = (texData as any).textureLocation;
+                logDebug(`[Import BB] Updated textureLocation: ${(texData as any).textureLocation}`);
+            }
 
             logDebug(
                 `[Import BB] Using existing texture: ${texture.name}, updated UV size to ${texture.uv_width}x${texture.uv_height}`
