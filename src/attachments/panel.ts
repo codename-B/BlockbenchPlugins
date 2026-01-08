@@ -140,9 +140,12 @@ const vuePanel = {
                     cursor: pointer;
                     user-select: none;
                     position: relative;
-                    font-size: 13px;
+                    font-size: 18px !important;
                     font-weight: 500;
                     min-height: 32px;
+                }
+                .attachment-section h2 .slot-badge {
+                    font-size: 6px !important;
                 }
                 .attachment-section h2:hover {
                     background: rgba(255, 255, 255, 0.05);
@@ -158,13 +161,27 @@ const vuePanel = {
                     gap: 3px;
                     padding: 1px 6px;
                     border-radius: 10px;
-                    font-size: 9px;
+                    font-size: 6px !important;
                     font-weight: 500;
                     line-height: 1.3;
                     flex-shrink: 0;
                 }
+                .attachment-section h2 .slot-badge {
+                    font-size: 18px !important;
+                }
+                .slot-badge-text {
+                    font-size: 18px !important;
+                    line-height: 1.3;
+                    display: inline-block;
+                }
+                .attachment-section h2 .slot-badge-text {
+                    font-size: 18px !important;
+                }
                 .slot-icon {
-                    font-size: 12px;
+                    font-size: 8px !important;
+                }
+                .attachment-section h2 .slot-badge .material-icons.slot-icon {
+                    font-size: 8px !important;
                 }
                 .attachment-count {
                     background: rgba(255, 255, 255, 0.1);
@@ -303,7 +320,7 @@ const vuePanel = {
                             </i>
                             <span class="slot-badge" :style="{ backgroundColor: getSlotInfo(section.slot).color + '40', color: getSlotInfo(section.slot).color }">
                                 <i class="material-icons slot-icon">{{ getSlotInfo(section.slot).icon }}</i>
-                                {{ section.slot }}: {{ section.elements.length }} {{ getSectionStats(section.elements) }}
+                                <span class="slot-badge-text">{{ section.slot }}: {{ section.elements.length }} {{ getSectionStats(section.elements) }}</span>
                             </span>
                             
                             <span class="section-buttons">
@@ -536,7 +553,7 @@ const vuePanel = {
 
             try {
                 Undo.initEdit({ outliner: true }, `Toggle visibility: ${elements.length} element(s)`);
-                
+
                 elements.forEach(element => {
                     if (!element) return;
                     try {
@@ -552,7 +569,7 @@ const vuePanel = {
                         if (DEBUG) console.warn('Error toggling visibility for element:', element?.name, e);
                     }
                 });
-                
+
                 Undo.finishEdit('Toggle visibility');
                 Canvas.updateVisibility?.();
                 Canvas.updateAll?.();
