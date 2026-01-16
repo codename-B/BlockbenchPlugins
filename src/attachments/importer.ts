@@ -109,6 +109,33 @@ function createCubeFromElementData(elemData: BBCubeElement, parentGroup: any, te
 
     remapCubeFaceTextures(cubeProps, textureMap);
 
+    // Handle legacy bbmodel files where clothingSlot is on cubes instead of groups.
+    // If the cube has a clothingSlot, propagate it up the hierarchy to parent groups.
+    // Stop when we reach a parent that already has a clothingSlot (this is a boundary - either
+    // an existing attachment group or a base model group that has been marked).
+    // Then clear clothingSlot from the cube since cubes should inherit from their parent group.
+    const cubeClothingSlot = cubeProps.clothingSlot;
+    if (cubeClothingSlot && typeof cubeClothingSlot === 'string' && cubeClothingSlot.trim() !== '') {
+        // Propagate clothingSlot up the hierarchy, but stop at boundaries
+        let currentGroup: any = parentGroup;
+        while (currentGroup && currentGroup instanceof Group) {
+            const existingSlot = currentGroup.clothingSlot;
+            // If this group already has a clothingSlot, stop propagation (we've hit a boundary)
+            if (existingSlot && existingSlot.trim() !== '') {
+                logDebug(`[Import BB] Stopped propagation at group "${currentGroup.name}" which already has clothingSlot "${existingSlot}"`);
+                break;
+            }
+            // This group doesn't have a clothingSlot - propagate it up
+            currentGroup.clothingSlot = cubeClothingSlot;
+            logDebug(`[Import BB] Propagated clothingSlot "${cubeClothingSlot}" from cube to group "${currentGroup.name}"`);
+            // Move up to the parent group
+            currentGroup = currentGroup.parent;
+        }
+        // Clear clothingSlot from the cube to prevent it from being detected as a separate attachment
+        delete cubeProps.clothingSlot;
+        logDebug(`[Import BB] Cleared clothingSlot from cube: ${cubeProps.name ?? '(unnamed)'}`);
+    }
+
     const cube = new Cube(cubeProps);
     cube.addTo(parentGroup).init();
     logDebug(`[Import BB] Created cube: ${cube.name ?? '(unnamed)'}`);

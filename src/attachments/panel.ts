@@ -144,8 +144,11 @@ const vuePanel = {
                     font-weight: 500;
                     min-height: 32px;
                 }
-                .attachment-section h2 .slot-badge {
-                    font-size: 6px !important;
+                .attachments-panel .attachment-section h2 {
+                    font-size: 18px !important;
+                }
+                .attachments-panel .attachment-section h2 * {
+                    font-size: inherit !important;
                 }
                 .attachment-section h2:hover {
                     background: rgba(255, 255, 255, 0.05);
@@ -161,20 +164,25 @@ const vuePanel = {
                     gap: 3px;
                     padding: 1px 6px;
                     border-radius: 10px;
-                    font-size: 6px !important;
+                    font-size: 18px !important;
                     font-weight: 500;
                     line-height: 1.3;
                     flex-shrink: 0;
                 }
-                .attachment-section h2 .slot-badge {
+                .attachments-panel .attachment-section h2 .slot-badge {
                     font-size: 18px !important;
                 }
-                .slot-badge-text {
+                /* Override w3-css h2 styles specifically for our text span */
+                .attachments-panel .slot-badge-text,
+                .attachments-panel .attachment-section h2 .slot-badge .slot-badge-text,
+                .attachments-panel .attachment-section h2 .slot-badge-text,
+                .attachments-panel .attachment-section h2 span.slot-badge span.slot-badge-text {
                     font-size: 18px !important;
                     line-height: 1.3;
                     display: inline-block;
                 }
-                .attachment-section h2 .slot-badge-text {
+                /* Maximum specificity to override w3-css */
+                .attachments-panel .attachment-section h2 .slot-badge .slot-badge-text {
                     font-size: 18px !important;
                 }
                 .slot-icon {
@@ -320,7 +328,7 @@ const vuePanel = {
                             </i>
                             <span class="slot-badge" :style="{ backgroundColor: getSlotInfo(section.slot).color + '40', color: getSlotInfo(section.slot).color }">
                                 <i class="material-icons slot-icon">{{ getSlotInfo(section.slot).icon }}</i>
-                                <span class="slot-badge-text">{{ section.slot }}: {{ section.elements.length }} {{ getSectionStats(section.elements) }}</span>
+                                <span class="slot-badge-text" style="font-size: 18px !important;">{{ section.slot }}: {{ section.elements.length }} {{ getSectionStats(section.elements) }}</span>
                             </span>
                             
                             <span class="section-buttons">

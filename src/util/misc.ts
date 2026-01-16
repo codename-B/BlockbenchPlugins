@@ -1,15 +1,16 @@
 import { im } from "../import";
+import JSON5 from "json5";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
+// @ts-expect-error: requireNativeModule is missing in blockbench types
 const path = requireNativeModule('path');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
+// @ts-expect-error: requireNativeModule is missing in blockbench types
 const fs = requireNativeModule('fs');
 
 export function load_back_drop_shape(backDropShape: string) {
     Blockbench.read([get_shape_location(null, backDropShape)], {
         readtype: "text", errorbox: false
     }, (files) => {
-        im(autoParseJSON(files[0].content as string), files[0].path, true);
+        im(JSON5.parse(files[0].content as string), files[0].path, true);
     });
 
 }
