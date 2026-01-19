@@ -20,7 +20,7 @@ import "./mods/settingsMod";
 import "./mods/legacyFormatConverterMod";
 import "./mods/nodePreviewControllerMod";
 import "./mods/attachmentsMod";
-import "./mods/ikMod";
+import "./mods/ik/index";
 
 BBPlugin.register(PACKAGE.name, {
     title: PACKAGE.title,
@@ -41,9 +41,9 @@ BBPlugin.register(PACKAGE.name, {
         events.UNLOAD.dispatch();
     },
     oninstall() {
-		events.INSTALL.dispatch();
-	},
-	onuninstall() {
-		events.UNINSTALL.dispatch();
-	},
+        events.INSTALL.dispatch();
+    },
+    onuninstall() {
+        events.UNINSTALL.dispatch();
+    },
 });
