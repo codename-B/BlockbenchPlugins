@@ -30,6 +30,8 @@ export interface VS_Element {
     name: string,
     from: [number, number, number],
     to: [number, number, number],
+    unwrapMode?: number,
+    unwrapRotation?: number,
     autoUnwrap?: boolean,
     disableRandomDrawOffset?: boolean,
     climateColorMap?: string,

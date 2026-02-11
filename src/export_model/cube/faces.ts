@@ -30,8 +30,8 @@ export function process_faces(faces: Partial<Record<CardinalDirection, CubeFace>
     for (const direction of Object.values(VS_Direction)) {
         const face = faces[direction];
 
-        // Skip disabled faces or faces without textures
-        if (!face || face.enabled === false || !face.texture) {
+        // Skip faces without textures
+        if (!face || !face.texture) {
             continue;
         }
 
@@ -48,10 +48,9 @@ export function process_faces(faces: Partial<Record<CardinalDirection, CubeFace>
 
         const processed_face = {
             texture: `#${texture_name}`,
+            ...(face.enabled === false && { enabled: false }),
             ...(!isUvDefault && { uv: transformedUV }),
             ...(transformedRotation !== 0 && { rotation: transformedRotation }),
-            autoUv: false,
-            snapUv: false,
         };
 
         for (const prop of VS_FACE_PROPS) {

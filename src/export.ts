@@ -103,10 +103,12 @@ export function ex(options): VS_Shape {
         }
     }
 
-    // Populate Texture Sizes
-    const textureSizes: Record<string, [number,number]> = {};
+    // Populate Texture Sizes — start with stored sizes from import, then override with live textures
+    const textureSizes: Record<string, [number,number]> = {
+        ...((Project as any).vs_textureSizes || {})
+    };
     for (const texture of Texture.all) {
-        if (texture.getUVWidth() && texture.getUVHeight()) {
+        if (texture.uv_width && texture.uv_height) {
             textureSizes[texture.name] = [texture.uv_width, texture.uv_height];
         }
     }

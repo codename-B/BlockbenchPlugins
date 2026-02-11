@@ -141,6 +141,26 @@ export const VS_CUBE_PROPS = [
             }
         },
     }),
+    new Property(Cube, "number", "unwrapMode", {
+        default: 0,
+        label: "Unwrap Mode",
+        exposed: false,
+    }),
+    new Property(Cube, "boolean", "autoUnwrap", {
+        default: false,
+        label: "Auto Unwrap",
+        exposed: false,
+    }),
+    new Property(Cube, "boolean", "disableRandomDrawOffset", {
+        default: false,
+        label: "Disable Random Draw Offset",
+        exposed: false,
+    }),
+    new Property(Cube, "number", "unwrapRotation", {
+        default: 0,
+        label: "Unwrap Rotation",
+        exposed: false,
+    }),
 ];
 
 // Blockbench-only properties (not exported to VS JSON format)
@@ -249,6 +269,10 @@ declare global {
         gradientShade?: boolean;
         renderPass?: number;
         seasonColorMap?: string;
+        unwrapMode?: number;
+        autoUnwrap?: boolean;
+        disableRandomDrawOffset?: boolean;
+        unwrapRotation?: number;
         backdrop?: boolean;
     }
 }

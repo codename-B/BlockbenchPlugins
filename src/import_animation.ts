@@ -21,6 +21,14 @@ export function import_animations(animations: Array<VS_Animation>) {
             snapping: FPS
         }) as unknown) as _Animation).add();
 
+        // Preserve VS-specific animation properties for round-trip fidelity
+        // @ts-expect-error: custom property for round-trip
+        animation.vs_code = vsAnimation.code;
+        // @ts-expect-error: custom property for round-trip
+        animation.vs_onActivityStopped = vsAnimation.onActivityStopped;
+        // @ts-expect-error: custom property for round-trip
+        animation.vs_onAnimationEnd = vsAnimation.onAnimationEnd;
+
         vsAnimation.keyframes.forEach(vsKeyframe => {
             const time = vsKeyframe.frame / FPS;
             for (const boneName in vsKeyframe.elements) {

@@ -15,6 +15,12 @@ export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
     Project.texture_width = content.textureWidth || 16;
     Project.texture_height = content.textureHeight || 16;
 
+    // Store original textureSizes for round-trip (includes entries for textures not in the textures map)
+    if (content.textureSizes) {
+        // @ts-expect-error: custom property for round-trip fidelity
+        Project.vs_textureSizes = { ...content.textureSizes };
+    }
+
     // Load textures
     for (const name in content.textures) {
         const texturePath = util.get_texture_location(null, content.textures[name]);

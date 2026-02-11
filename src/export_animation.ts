@@ -70,12 +70,20 @@ export function export_animations(): Array<VS_Animation> {
             }
         });
 
+        // Use preserved VS values if available, otherwise compute defaults
+        // @ts-expect-error: custom property from import
+        const storedCode = animation.vs_code;
+        // @ts-expect-error: custom property from import
+        const storedOnActivityStopped = animation.vs_onActivityStopped;
+        // @ts-expect-error: custom property from import
+        const storedOnAnimationEnd = animation.vs_onAnimationEnd;
+
         const vsAnimation : VS_Animation = {
             name: animation.name,
-            code: animation.name.toLowerCase().replace(/ /g, ''),
-            quantityframes: Math.round(animation.length * fps) + 1,
-            onActivityStopped: "EaseOut",
-            onAnimationEnd: animation.loop === 'loop' ? "Repeat" : "Hold",
+            code: storedCode || animation.name.toLowerCase().replace(/ /g, ''),
+            quantityframes: Math.round(animation.length * fps),
+            onActivityStopped: storedOnActivityStopped || "EaseOut",
+            onAnimationEnd: storedOnAnimationEnd || (animation.loop === 'loop' ? "Repeat" : "Hold"),
             keyframes: Object.values(keyframes).sort((a, b) => a.frame - b.frame)
         };
         

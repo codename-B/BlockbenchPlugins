@@ -16,18 +16,15 @@ import { has_children, has_attachments, has_geometry } from "../transform";
 export function traverse(parent: Group | null, object_space_pos: [number,number,number], vsElements: Array<VS_Element>, asBackdrop: boolean, filePath?: string) {
     for (const vsElement of vsElements) {
 
-        // Elements with children or attachments (but no geometry) become groups
-        if(!has_geometry(vsElement) && (has_children(vsElement) || has_attachments(vsElement))) {
+        if (has_geometry(vsElement) && !has_children(vsElement) && !has_attachments(vsElement)) {
+            // Elements with geometry but no children/attachments become cubes
+            process_cube(parent, object_space_pos, vsElement, asBackdrop);
+        } else if (!has_geometry(vsElement)) {
+            // Elements without geometry become groups (containers, anchors, placeholders)
             const group = process_group(parent, object_space_pos, vsElement, asBackdrop, filePath);
-            // Recursively traverse child elements if they exist
             if (has_children(vsElement)) {
                 traverse(group, util.vector_add(vsElement.from, object_space_pos), vsElement.children!, asBackdrop, filePath);
             }
-        }
-
-        // Elements with geometry but no children/attachments become cubes
-        if (has_geometry(vsElement) && !has_children(vsElement) && !has_attachments(vsElement)) {
-            process_cube(parent, object_space_pos, vsElement, asBackdrop);
         }
     }
 }

@@ -15,16 +15,28 @@ export function create_cube(object_space_pos: [number,number,number], vsElement:
         from: util.vector_add(vsElement.from, object_space_pos),
         to: util.vector_add(vsElement.to, object_space_pos),
         uv_offset: vsElement.uv,
-        shade: vsElement.shade,
+        shade: vsElement.shade ?? true,
         rotation: [vsElement.rotationX || 0, vsElement.rotationY || 0, vsElement.rotationZ || 0],
         origin: vsElement.rotationOrigin ? util.vector_add(vsElement.rotationOrigin, object_space_pos) : object_space_pos,
         faces: faces,
     };
     const cube = new Cube(cube_options);
 
+    // @ts-expect-error: custom property for round-trip fidelity
+    cube.vs_has_rotation_origin = vsElement.rotationOrigin !== undefined;
+
+    // Preserve element-level uv offset (Blockbench may not preserve uv_offset in per-face UV mode)
+    if (vsElement.uv) {
+        // @ts-expect-error: custom property for round-trip fidelity
+        cube.vs_uv = vsElement.uv;
+    }
+
     for (const cube_prop of VS_CUBE_PROPS) {
-        const prop_name =  cube_prop.name;
-        cube[prop_name] = vsElement[prop_name];
+        const prop_name = cube_prop.name;
+        if (prop_name === 'shade') continue; // Already handled in constructor
+        if (vsElement[prop_name] !== undefined) {
+            cube[prop_name] = vsElement[prop_name];
+        }
     }
 
     return cube;
