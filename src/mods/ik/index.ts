@@ -7,6 +7,9 @@ import { setupIKProperties } from "./properties";
 import { setupInteractiveIK, updatePinnedBones } from "./interactive";
 import { bakeIKAnimations } from "./baking";
 import { checkForIKControllers } from "./chain_utils";
+import { setOnConstraintCacheRebuilt } from "./constraints";
+import { refreshIKPreview } from "./utils";
+import { syncConstraintEnforcement, clearConstraintEnforcement } from "../boneAnimatorMod";
 
 // Blockbench global types
 declare var Blockbench: any;
@@ -33,33 +36,25 @@ createBlockbenchMod(
         
         setupInteractiveIK();
         
+        // Re-patch bone meshes whenever constraint cache is rebuilt
+        setOnConstraintCacheRebuilt(() => {
+            refreshIKPreview(undefined, true);
+            syncConstraintEnforcement();
+        });
+
         Blockbench.on('load_project', () => {
-            setTimeout(updatePinnedBones, 100);
+            setTimeout(() => {
+                updatePinnedBones();
+                refreshIKPreview(undefined, true);
+                syncConstraintEnforcement();
+            }, 100);
         });
         
         codecVS.compile = function (options: any) {
             if (is_vs_project(Project)) {
-                
                 const hasIK = checkForIKControllers();
                 if (hasIK) {
-                    
-                    const shouldBake = Blockbench.showMessageBox({
-                        title: 'IK Animation Detected',
-                        message:
-                            'Your model uses Inverse Kinematics (IK) controllers.\n\n' +
-                            'Vintage Story does not support IK natively. IK animations will be ' +
-                            'automatically converted to keyframe animations during export.\n\n' +
-                            'This may result in a large number of keyframes. Continue?',
-                        buttons: ['Bake IK to Keyframes', 'Cancel Export']
-                    });
-
-                    if (shouldBake === 0) {
-                        
-                        bakeIKAnimations(is_vs_project);
-                    } else {
-                        
-                        throw new Error('Export cancelled: IK animations need to be baked to keyframes');
-                    }
+                    bakeIKAnimations(is_vs_project);
                 }
             }
             return context.originalCompile(options);
@@ -70,7 +65,8 @@ createBlockbenchMod(
     context => {
         
         codecVS.compile = context.originalCompile;
-        
+        clearConstraintEnforcement();
+
         if (context.editIKConstraintsAction) {
             context.editIKConstraintsAction.delete();
         }

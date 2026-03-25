@@ -24,7 +24,11 @@ export function export_animations(): Array<VS_Animation> {
         let hasNonLinearInterpolation = false;
 
         animators.forEach(animator => {
-            if (animator.keyframes.length > 0 && animator.type === 'bone') {
+            if (animator.type === 'bone' && animator.keyframes && animator.keyframes.length > 0) {
+                // Skip NullObject animators (IK controllers) — they don't exist as VS elements
+                if (typeof NullObject !== 'undefined' && NullObject.all?.some((n: any) => n.uuid === animator.uuid)) {
+                    return;
+                }
                 const bone_name = animator.name;
 
                 animator.keyframes.forEach(kf => {
@@ -60,6 +64,23 @@ export function export_animations(): Array<VS_Animation> {
                 });
             }
 
+            // Process effect animators for texture swap keyframes
+            if (animator.type === 'effect' && animator.keyframes && animator.keyframes.length > 0) {
+                animator.keyframes.forEach(kf => {
+                    if (kf.channel === 'timeline') {
+                        const script = kf.data_points[0]?.script;
+                        if (script) {
+                            const textures = parseTextureSwapScript(script);
+                            if (textures) {
+                                const frame = Math.round(kf.time * fps);
+                                keyframes[frame] = keyframes[frame] || { frame, elements: {} };
+                                keyframes[frame].textures = textures;
+                            }
+                        }
+                    }
+                });
+            }
+
             // Wraps all animation elements into oneLiner wrappers
             for(const keyframe of Object.values(keyframes)) {
                 const wrapped_elements = {};
@@ -81,7 +102,7 @@ export function export_animations(): Array<VS_Animation> {
         const vsAnimation : VS_Animation = {
             name: animation.name,
             code: storedCode || animation.name.toLowerCase().replace(/ /g, ''),
-            quantityframes: Math.round(animation.length * fps),
+            quantityframes: get_frame_quantity(animation, keyframes),
             onActivityStopped: storedOnActivityStopped || "EaseOut",
             onAnimationEnd: storedOnAnimationEnd || (animation.loop === 'loop' ? "Repeat" : "Hold"),
             keyframes: Object.values(keyframes).sort((a, b) => a.frame - b.frame)
@@ -94,6 +115,23 @@ export function export_animations(): Array<VS_Animation> {
                 frame1.frame = 1;
                 vsAnimation.keyframes.push(frame1);
                 vsAnimation.quantityframes = 1;
+            }
+        }
+
+        // For looping animations, insert a virtual end frame copying frame 0
+        // so VS can interpolate back to the start. quantityframes is 0-indexed
+        // in VS, so the last frame is quantityframes - 1.
+        if (vsAnimation.onAnimationEnd === "Repeat" && vsAnimation.quantityframes > 0) {
+            const lastFrame = vsAnimation.quantityframes - 1;
+            const hasLastFrame = vsAnimation.keyframes.some(kf => kf.frame === lastFrame);
+            if (!hasLastFrame) {
+                const frame0 = vsAnimation.keyframes.find(kf => kf.frame === 0);
+                if (frame0) {
+                    const virtualFrame = JSON.parse(JSON.stringify(frame0));
+                    virtualFrame.frame = lastFrame;
+                    vsAnimation.keyframes.push(virtualFrame);
+                    vsAnimation.keyframes.sort((a, b) => a.frame - b.frame);
+                }
             }
         }
 
@@ -119,24 +157,46 @@ export function export_animations(): Array<VS_Animation> {
  * @param keyframes Keyframes
  */
 function get_frame_quantity(animation: _Animation, keyframes: Record<number,VS_Keyframe>): number {
-    let quantityframes = Math.round(animation.length * util.fps);
+    const quantityframes = Math.round(animation.length * util.fps);
     const keyframe_frames = Object.keys(keyframes).map(kf => parseInt(kf));
+    if (keyframe_frames.length === 0) {
+        return quantityframes;
+    }
     const max_keyframe = Math.max(...keyframe_frames);
-    if (max_keyframe == quantityframes) {
+    if (max_keyframe >= quantityframes) {
         display_animation_length_warning(animation.name);
-        quantityframes = max_keyframe + 1;
     }
     return quantityframes;
 }
 
 
+/**
+ * Parses a Blockbench effect timeline script for texture swap data.
+ * Expected format: "textures": { "slot": "path", ... }
+ * Returns a Record<string, string> mapping texture codes to asset paths, or null if not a texture swap.
+ */
+function parseTextureSwapScript(script: string): Record<string, string> | null {
+    try {
+        // The script content is a JSON fragment like: "textures": { "mouth": "entity/mouth/*_smile" }
+        // Wrap in braces to make it valid JSON
+        const trimmed = script.trim();
+        const json = JSON.parse('{' + trimmed + '}');
+        if (json.textures && typeof json.textures === 'object') {
+            return json.textures;
+        }
+    } catch {
+        // Not valid JSON texture swap data, ignore
+    }
+    return null;
+}
+
 function display_animation_length_warning(animation_name: string) {
     Blockbench.showMessageBox({
         title: 'Animation Length Warning',
         message: 
-            `The animation "${animation_name}" has keyframes on the last frame. ` +
-            `This is not supported by Vintage Story, so the animation length was inceased by 1. ` +
-            `If you want to prevent this, please move the keyframes away from the last frame.`
+            `The animation "${animation_name}" has keyframes on or past the last frame. ` +
+            `This may not animate correctly in Vintage Story. ` +
+            `Consider moving the keyframes away from the last frame if you experience issues.`
     });
 }
 

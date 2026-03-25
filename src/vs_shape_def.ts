@@ -89,6 +89,7 @@ export type VS_OnAnimationEnd = "Hold" | "Repeat" | "Stop" | "EaseOut"
 export interface VS_Keyframe {
     frame: number,
     elements: Record<string, VS_AnimationKey>,
+    textures?: Record<string, string>,
 }
 
 /**

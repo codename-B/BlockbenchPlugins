@@ -31,16 +31,18 @@ export function process_cube(parent: Group | null, node: Cube, accu: Array<VS_El
         }
 
         if (value !== undefined && value !== null && value !== '' && value !== false) {
-            if (prop_name === 'renderPass' && value === -1) {
+            // Coerce to number for numeric properties (select dropdowns may return strings)
+            const numValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'renderPass' && numValue === -1) {
                 continue;
             }
-            if (prop_name === 'unwrapMode' && value === 0) {
+            if (prop_name === 'unwrapMode' && numValue === 0) {
                 continue;
             }
-            if (prop_name === 'unwrapRotation' && value === 0) {
+            if (prop_name === 'unwrapRotation' && numValue === 0) {
                 continue;
             }
-            vsElement[prop_name] = value;
+            vsElement[prop_name] = numValue;
         }
     }
     accu.push(vsElement);

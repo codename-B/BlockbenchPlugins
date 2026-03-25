@@ -4,6 +4,14 @@ import { findAllIKControllers } from "./chain_utils";
 
 // Blockbench global types
 declare var Group: any;
+declare var Canvas: any;
+declare var Blockbench: any;
+declare var Format: any;
+declare var Timeline: any;
+declare var Animation: any;
+declare var Animator: any;
+
+let forcedIKAnimationContext = false;
 
 /**
  * Gets the world position of a bone (accounting for parent transforms)
@@ -55,4 +63,44 @@ export function getBoneLength(bone: any): number {
     const start = getBoneWorldPosition(bone);
     const end = getBoneEndWorldPosition(bone);
     return vec3Length(vec3Sub(end, start));
+}
+
+export function setForcedIKAnimationContext(active: boolean): void {
+    forcedIKAnimationContext = active;
+}
+
+export function isIKAnimationContextActive(): boolean {
+    if (forcedIKAnimationContext) {
+        return true;
+    }
+
+    if (!Format?.animation_mode) {
+        return false;
+    }
+
+    return !!(
+        Timeline?.playing ||
+        Animation?.selected?.playing ||
+        Animator?.selected?.playing
+    );
+}
+
+/**
+ * Refreshes Blockbench's preview state after IK updates.
+ * `Blockbench.updateViewport()` only re-renders the scene; it does not
+ * force the canvas controllers to pull updated bone transforms.
+ */
+export function refreshIKPreview(bones?: any[] | null, fullRefresh = false): void {
+    const targetBones = bones && bones.length > 0 ? bones : undefined;
+
+    try {
+        Canvas.updateAllBones?.(targetBones);
+
+        if (fullRefresh) {
+            Canvas.updateAllPositions?.();
+            Canvas.updateAll?.();
+        }
+    } finally {
+        Blockbench.updateViewport?.();
+    }
 }

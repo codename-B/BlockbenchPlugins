@@ -29,7 +29,8 @@ export function create_VS_element(parent: Group | null, node: Cube, parent_pos: 
         rotationOrigin = util.vector_add(rotationOrigin, offset);
     }
 
-    const includeRotationOrigin = !util.vector_equals(rotationOrigin, from) || (node as any).vs_has_rotation_origin;
+    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
+    const includeRotationOrigin = hasRotation || (node as any).vs_has_rotation_origin;
 
     return {
         name: node.name,

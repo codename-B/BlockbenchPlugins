@@ -2,6 +2,7 @@
 import { findAllIKControllers } from "./chain_utils";
 import { getIKConstraintData, setIKConstraintData, applyRotationConstraints, getOrientationInfluence } from "./constraints";
 import { IKConstraintData } from "./types";
+import { setForcedIKAnimationContext } from "./utils";
 
 // Blockbench global types
 declare var Blockbench: any;
@@ -222,7 +223,10 @@ export function bakeIKAnimations(is_vs_project: (project: any) => boolean) {
 
     let totalBakedKeyframes = 0;
     
-    animations.forEach((animation: any) => {
+    setForcedIKAnimationContext(true);
+
+    try {
+        animations.forEach((animation: any) => {
         
         const ikBones = new Set<any>();
         ikControllers.forEach(({ chain }) => {
@@ -387,7 +391,10 @@ export function bakeIKAnimations(is_vs_project: (project: any) => boolean) {
         if (wasPlaying) {
             Animator.play();
         }
-    });
+        });
+    } finally {
+        setForcedIKAnimationContext(false);
+    }
 
     Blockbench.showQuickMessage(
         `Baked ${ikControllers.length} IK controller(s) to ${totalBakedKeyframes} keyframes`,

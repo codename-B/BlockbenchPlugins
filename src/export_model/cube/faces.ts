@@ -67,6 +67,10 @@ export function process_faces(faces: Partial<Record<CardinalDirection, CubeFace>
                 if (Array.isArray(value) && value.every(v => v === 0)) {
                     continue;
                 }
+                // Skip false for boolean face properties (autoUv, snapUv default to false in VS)
+                if (typeof value === 'boolean' && value === false) {
+                    continue;
+                }
                 processed_face[prop_name] = value;
             }
         }

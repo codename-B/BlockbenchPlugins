@@ -1,6 +1,6 @@
 
 import { vec3Length, vec3Sub, vec3Normalize, vec3Add } from "./math";
-import { getBoneWorldPosition, getBoneEndWorldPosition } from "./utils";
+import { getBoneWorldPosition, getBoneEndWorldPosition, refreshIKPreview } from "./utils";
 import { getChainMaxReach, clampTargetToChainReach } from "./solver";
 import { getIKConstraintData, setIKConstraintData } from "./constraints";
 import { DragState } from "./types";
@@ -10,6 +10,7 @@ import { findAllIKControllers as findAllControllers } from "./chain_utils";
 // Blockbench global types
 declare var Blockbench: any;
 declare var Group: any;
+declare var NullObject: any;
 declare var Outliner: any;
 declare var Format: any;
 declare var Animation: any;
@@ -31,7 +32,7 @@ const dragState: DragState = {
 /**
  * Toggles the pin state for a bone.
  * Pinned bones will not move during IK solving.
- * 
+ *
  * @param bone - The bone to toggle pin state for
  */
 export function togglePinBone(bone: any): void {
@@ -50,9 +51,9 @@ export function togglePinBone(bone: any): void {
  */
 export function updatePinnedBones(): void {
     const pinnedBones = Group.all
-        .filter((g: any) => !g.isNull && (g as any).vsIKPinned)
+        .filter((g: any) => (g as any).vsIKPinned)
         .map((g: any) => g.name);
-    
+
     const ikControllers = findAllControllers();
     ikControllers.forEach(({ controller }) => {
         const constraintData = getIKConstraintData(controller);
@@ -64,7 +65,7 @@ export function updatePinnedBones(): void {
 /**
  * Sets up interactive IK by hooking into Blockbench bone dragging events.
  * Implements real-time IK solving when dragging bones in IK chains.
- * 
+ *
  * Features:
  * - Automatic IK solving during bone transforms
  * - Respects pinned bones
@@ -73,22 +74,22 @@ export function updatePinnedBones(): void {
  */
 export function setupInteractiveIK(): void {
     let transformCount = 0;
-    
+
     Blockbench.on('select', () => {
-        
+
         const selected = Outliner.selected;
         if (!selected || selected.length !== 1) return;
 
         const bone = selected[0];
-        if (!(bone instanceof Group) || bone.isNull) return;
-        
+        if (!(bone instanceof Group)) return;
+
         const ikControllers = findAllControllers();
         for (const { controller, chain } of ikControllers) {
             const constraintData = getIKConstraintData(controller);
 
             if (chain.includes(bone)) {
                 const pinnedBones = new Set(constraintData.pinnedBones || []);
-                
+
                 if (pinnedBones.has(bone.name)) {
                     Blockbench.showQuickMessage(
                         `Cannot drag pinned bone: ${bone.name}`,
@@ -96,7 +97,7 @@ export function setupInteractiveIK(): void {
                     );
                     return;
                 }
-                
+
                 if (!dragState.isActive || dragState.draggedBone !== bone) {
                     dragState.isActive = true;
                     dragState.draggedBone = bone;
@@ -106,7 +107,7 @@ export function setupInteractiveIK(): void {
                     dragState.startPosition = getBoneWorldPosition(bone);
                     dragState.originalBoneState.clear();
                     transformCount = 0;
-                    
+
                     chain.forEach((chainBone: any) => {
                         dragState.originalBoneState.set(chainBone.name, {
                             position: [chainBone.origin[0], chainBone.origin[1], chainBone.origin[2]],
@@ -123,17 +124,17 @@ export function setupInteractiveIK(): void {
             }
         }
     });
-    
+
     Blockbench.on('transform_selection', () => {
-        
+
         const selected = Outliner.selected;
         if (!selected || selected.length !== 1) return;
 
         const bone = selected[0];
-        if (!(bone instanceof Group) || bone.isNull) return;
-        
+        if (!(bone instanceof Group)) return;
+
         if (!dragState.isActive || dragState.draggedBone !== bone) {
-            
+
             const ikControllers = findAllControllers();
             for (const { controller, chain } of ikControllers) {
                 const constraintData = getIKConstraintData(controller);
@@ -176,19 +177,19 @@ export function setupInteractiveIK(): void {
         const chain = dragState.ikChain;
         const constraintData = dragState.constraintData;
         const pinnedBones = new Set(constraintData.pinnedBones || []);
-        
+
         let targetPosition = getBoneWorldPosition(bone);
-        
+
         const endEffectorIndex = chain.length - 1;
         if (chain[endEffectorIndex] === bone) {
-            
+
             const maxReach = getChainMaxReach(chain);
             const rootPos = getBoneWorldPosition(chain[0]);
             const distance = vec3Length(vec3Sub(targetPosition, rootPos));
-            
+
             if (distance > maxReach) {
                 const clampedTarget = clampTargetToChainReach(chain, targetPosition, maxReach);
-                
+
                 const boneParent = bone.parent;
                 if (boneParent instanceof Group) {
                     const parentPos = getBoneWorldPosition(boneParent);
@@ -203,16 +204,16 @@ export function setupInteractiveIK(): void {
 
                 targetPosition = clampedTarget;
             }
-            
+
             solveIKChain(chain, targetPosition, pinnedBones, constraintData);
         } else {
-            
+
             const boneIndex = chain.indexOf(bone);
             if (boneIndex === -1) return;
-            
+
             const subChain = chain.slice(boneIndex);
             const endEffector = subChain[subChain.length - 1];
-            
+
             const maxReach = getChainMaxReach(subChain);
             const rootPos = getBoneWorldPosition(subChain[0]);
             const distance = vec3Length(vec3Sub(targetPosition, rootPos));
@@ -234,18 +235,19 @@ export function setupInteractiveIK(): void {
             }
 
             const endEffectorTarget = getBoneEndWorldPosition(endEffector);
-            
+
             solveIKChain(subChain, endEffectorTarget, pinnedBones, constraintData);
         }
-        
+
         if (transformCount % VIEWPORT_UPDATE_THROTTLE === 0) {
-            Blockbench.updateViewport();
+            refreshIKPreview(chain);
         }
     });
-    
+
     Blockbench.on('finish_edit', () => {
         if (dragState.isActive && dragState.ikChain && dragState.draggedBone) {
-            
+            const finalChain = dragState.ikChain;
+
             if (Format.animation_mode) {
                 const currentAnimation = Animation.selected;
                 if (currentAnimation) {
@@ -254,13 +256,13 @@ export function setupInteractiveIK(): void {
                     dragState.ikChain.forEach((bone: any) => {
                         const animator = currentAnimation.getBoneAnimator(bone);
                         if (!animator) return;
-                        
+
                         const existingKf = animator.keyframes.find((kf: any) =>
                             kf.channel === 'rotation' && Math.abs(kf.time - currentTime) < KEYFRAME_TIME_TOLERANCE
                         );
 
                         if (!existingKf) {
-                            
+
                             animator.addKeyframe({
                                 interpolation: 'linear',
                                 time: currentTime,
@@ -272,7 +274,7 @@ export function setupInteractiveIK(): void {
                                 }]
                             });
                         } else {
-                            
+
                             if (existingKf.data_points && existingKf.data_points[0]) {
                                 existingKf.data_points[0].x = bone.rotation[0] || 0;
                                 existingKf.data_points[0].y = bone.rotation[1] || 0;
@@ -282,7 +284,9 @@ export function setupInteractiveIK(): void {
                     });
                 }
             }
-            
+
+            refreshIKPreview(finalChain);
+
             dragState.isActive = false;
             dragState.draggedBone = null;
             dragState.ikChain = null;
@@ -293,9 +297,9 @@ export function setupInteractiveIK(): void {
             transformCount = 0;
         }
     });
-    
+
     Blockbench.on('update_selection', () => {
-        
+
         if (!dragState.isActive) {
         }
     });

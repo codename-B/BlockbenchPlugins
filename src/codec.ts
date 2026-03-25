@@ -21,7 +21,16 @@ export const codecVS = new Codec("codecVS", {
         }
     },
     compile(options) {
-        return autoStringify(ex(options));
+        try {
+            return autoStringify(ex(options));
+        } catch (e) {
+            console.error('[VS Codec] Compile failed:', e);
+            Blockbench.showMessageBox({
+                title: 'VS Export Error',
+                message: `Failed to compile model: ${e instanceof Error ? e.message : String(e)}`
+            });
+            return undefined;
+        }
     },
     parse(data, file_path, _add) {
         im(JSON5.parse(data) as VS_Shape, file_path, false);

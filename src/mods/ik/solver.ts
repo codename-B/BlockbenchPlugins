@@ -145,7 +145,6 @@ export function solveIKChain(
             bone.rotation[1] = newRot[1];
             bone.rotation[2] = newRot[2];
             
-            Blockbench.updateViewport();
         }
     }
     

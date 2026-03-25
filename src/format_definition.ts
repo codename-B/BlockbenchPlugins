@@ -24,6 +24,7 @@ export function create_format(): ModelFormat {
         meshes: false,
         texture_meshes: false,
         locators: true,
+        null_object: true,
         rotation_limit: false,
         rotation_snap: false,
         uv_rotation: true,

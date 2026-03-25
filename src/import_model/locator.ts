@@ -19,14 +19,12 @@ export function process_attachment_points(
         const posX = parseFloat(ap.posX);
         const posY = parseFloat(ap.posY);
         const posZ = parseFloat(ap.posZ);
-        const rotX = parseFloat(ap.rotationX);
-        const rotY = parseFloat(ap.rotationY);
-        const rotZ = parseFloat(ap.rotationZ);
 
-        // Calculate absolute position from relative position
+        // Calculate absolute position: VS attachment positions are relative to parent's `from`,
+        // which is stored as vs_group_from in absolute BB space (not rotationOrigin/origin)
         const absolute_pos = util.vector_add(
             [posX, posY, posZ],
-            parent.origin
+            (parent as any).vs_group_from ?? parent.origin
         );
 
         const locator = new Locator({
@@ -34,8 +32,10 @@ export function process_attachment_points(
             from: absolute_pos
         });
 
-        // Set rotation
-        (locator as any).rotation = [rotX, rotY, rotZ];
+        // Set rotation via registered properties (persists in .bbmodel)
+        (locator as any).rotationX = parseFloat(ap.rotationX) || 0;
+        (locator as any).rotationY = parseFloat(ap.rotationY) || 0;
+        (locator as any).rotationZ = parseFloat(ap.rotationZ) || 0;
 
         if (asBackdrop) {
             locator.locked = true;

@@ -74,7 +74,8 @@ export function process_group(
         rotationOrigin = util.vector_add(rotationOrigin, offset);
     }
 
-    const includeRotationOrigin = !util.vector_equals(rotationOrigin, from) || (node as any).vs_has_rotation_origin;
+    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
+    const includeRotationOrigin = hasRotation || (node as any).vs_has_rotation_origin;
 
     const vsElement: VS_Element = {
         name: node.name,
@@ -110,15 +111,17 @@ export function process_group(
             continue;
         }
         if (value !== undefined && value !== null && value !== '' && value !== false) {
-            if (prop_name === 'renderPass' && value === -1) continue;
-            if (prop_name === 'unwrapMode' && value === 0) continue;
-            if (prop_name === 'unwrapRotation' && value === 0) continue;
-            vsElement[prop_name] = value;
+            // Coerce to number for numeric properties (select dropdowns may return strings)
+            const numValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'renderPass' && numValue === -1) continue;
+            if (prop_name === 'unwrapMode' && numValue === 0) continue;
+            if (prop_name === 'unwrapRotation' && numValue === 0) continue;
+            vsElement[prop_name] = numValue;
         }
     }
 
     // Process child locators as attachment points
-    const locators = node.children.filter(child => child instanceof Locator) as Array<Locator>;
+    const locators = node.children.filter(child => child instanceof Locator && !(typeof NullObject !== 'undefined' && child instanceof NullObject)) as Array<Locator>;
     if (locators.length > 0) {
         const attachmentPoints = process_locators(node, locators);
         if (attachmentPoints.length > 0) {
@@ -180,7 +183,8 @@ export function process_collapsed_group(
     // Process faces from the _geo cube
     const reduced_faces = process_faces(geoChild.faces);
 
-    const includeRotationOrigin = !util.vector_equals(rotationOrigin, from) || (node as any).vs_has_rotation_origin;
+    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
+    const includeRotationOrigin = hasRotation || (node as any).vs_has_rotation_origin;
 
     const vsElement: VS_Element = {
         name: node.name,
@@ -215,21 +219,23 @@ export function process_collapsed_group(
             continue;
         }
         if (value !== undefined && value !== null && value !== '' && value !== false) {
-            if (prop_name === 'renderPass' && value === -1) {
+            // Coerce to number for numeric properties (select dropdowns may return strings)
+            const numValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'renderPass' && numValue === -1) {
                 continue;
             }
-            if (prop_name === 'unwrapMode' && value === 0) {
+            if (prop_name === 'unwrapMode' && numValue === 0) {
                 continue;
             }
-            if (prop_name === 'unwrapRotation' && value === 0) {
+            if (prop_name === 'unwrapRotation' && numValue === 0) {
                 continue;
             }
-            vsElement[prop_name] = value;
+            vsElement[prop_name] = numValue;
         }
     }
 
     // Process child locators as attachment points
-    const locators = node.children.filter(child => child instanceof Locator) as Array<Locator>;
+    const locators = node.children.filter(child => child instanceof Locator && !(typeof NullObject !== 'undefined' && child instanceof NullObject)) as Array<Locator>;
     if (locators.length > 0) {
         const attachmentPoints = process_locators(node, locators);
         if (attachmentPoints.length > 0) {
