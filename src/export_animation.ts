@@ -80,16 +80,16 @@ export function export_animations(): Array<VS_Animation> {
                     }
                 });
             }
-
-            // Wraps all animation elements into oneLiner wrappers
-            for(const keyframe of Object.values(keyframes)) {
-                const wrapped_elements = {};
-                for (const [element, content] of Object.entries(keyframe.elements)) {
-                    wrapped_elements[element] = new oneLiner(content);
-                }
-                keyframe.elements = wrapped_elements;
-            }
         });
+
+        // Wraps all animation elements into oneLiner wrappers (after all animators are processed)
+        for(const keyframe of Object.values(keyframes)) {
+            const wrapped_elements = {};
+            for (const [element, content] of Object.entries(keyframe.elements)) {
+                wrapped_elements[element] = new oneLiner(content);
+            }
+            keyframe.elements = wrapped_elements;
+        }
 
         // Use preserved VS values if available, otherwise compute defaults
         // @ts-expect-error: custom property from import
@@ -157,7 +157,9 @@ export function export_animations(): Array<VS_Animation> {
  * @param keyframes Keyframes
  */
 function get_frame_quantity(animation: _Animation, keyframes: Record<number,VS_Keyframe>): number {
-    const quantityframes = Math.round(animation.length * util.fps);
+    // VS uses QuantityFrames as array size — valid frames are 0..QuantityFrames-1.
+    // We need QuantityFrames > max keyframe frame number.
+    const quantityframes = Math.round(animation.length * util.fps) + 1;
     const keyframe_frames = Object.keys(keyframes).map(kf => parseInt(kf));
     if (keyframe_frames.length === 0) {
         return quantityframes;
@@ -165,6 +167,7 @@ function get_frame_quantity(animation: _Animation, keyframes: Record<number,VS_K
     const max_keyframe = Math.max(...keyframe_frames);
     if (max_keyframe >= quantityframes) {
         display_animation_length_warning(animation.name);
+        return max_keyframe + 1;
     }
     return quantityframes;
 }

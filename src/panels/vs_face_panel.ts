@@ -2,7 +2,7 @@ import { createBlockbenchMod } from "../util/moddingTools";
 import * as PACKAGE from "../../package.json";
 
 const WIND_MODE_OPTIONS: Record<string, string> = {
-    '': 'Default',
+    '-1': 'Default',
     '0': 'NoWind',
     '1': 'WeakWind',
     '2': 'NormalWind',
@@ -20,15 +20,33 @@ const WIND_MODE_OPTIONS: Record<string, string> = {
 };
 
 const REFLECTIVE_MODE_OPTIONS: Record<string, string> = {
-    '0': 'None',
-    '1': 'Weak',
-    '2': 'Medium',
-    '3': 'Strong',
+    '0': 'Not reflective',
+    '1': 'Weakly random reflective',
+    '2': 'Weakly reflective',
+    '3': 'Strongly reflective',
     '4': 'Sparkly',
     '5': 'Mild',
 };
 
 const FACE_DIRECTIONS = ['north', 'east', 'south', 'west', 'up', 'down'] as const;
+const FACE_LABELS: Record<string, string> = {
+    north: 'N',
+    east: 'E',
+    south: 'S',
+    west: 'W',
+    up: 'U',
+    down: 'D',
+};
+
+// Colors matching VSMC Face.ColorsByFace * DefaultBlockSideBrightnessByFacing
+const FACE_COLORS: Record<string, string> = {
+    north: 'rgb(143,154,204)',
+    east: 'rgb(204,143,143)',
+    south: 'rgb(143,154,204)',
+    west: 'rgb(204,143,143)',
+    up: 'rgb(187,255,179)',
+    down: 'rgb(131,179,125)',
+};
 
 /**
  * Returns the 4 vertex positions for a given face direction on a cube.
@@ -48,6 +66,37 @@ function getFaceVertices(cube: Cube, direction: string): [number, number, number
         case 'down':  return [[x1,y1,z1], [x2,y1,z1], [x2,y1,z2], [x1,y1,z2]];
         default:      return [[0,0,0], [0,0,0], [0,0,0], [0,0,0]];
     }
+}
+
+/**
+ * Auto-compute wind data for a face from vertex world Y positions.
+ * Matches VSMC FacePropertiesPanel.getWindData(): windData[i] = (int)(worldY / 16)
+ */
+function computeWindData(cube: Cube, direction: string): [number, number, number, number] {
+    const vertices = getFaceVertices(cube, direction);
+    const result: [number, number, number, number] = [0, 0, 0, 0];
+
+    for (let i = 0; i < 4; i++) {
+        const pos = vertices[i];
+        // @ts-expect-error: THREE is global in Blockbench
+        const localPos = new THREE.Vector3(
+            pos[0] - cube.origin[0],
+            pos[1] - cube.origin[1],
+            pos[2] - cube.origin[2]
+        );
+
+        // @ts-expect-error: mesh access
+        if (cube.mesh) {
+            // @ts-expect-error: mesh access
+            cube.mesh.updateMatrixWorld();
+            // @ts-expect-error: mesh access
+            const worldPos = cube.mesh.localToWorld(localPos);
+            result[i] = Math.trunc(worldPos.y / 16);
+        } else {
+            result[i] = Math.trunc(pos[1] / 16);
+        }
+    }
+    return result;
 }
 
 // Vertex highlight dot — shared THREE.js objects
@@ -71,8 +120,6 @@ function showVertexDot(cube: Cube, direction: string, vertexIndex: number) {
     const pos = vertices[vertexIndex];
     if (!pos) return;
 
-    // Convert absolute position to mesh-local space (relative to cube's origin/pivot),
-    // then transform to world space via the mesh's matrix (handles rotation + parent groups)
     // @ts-expect-error: THREE is global in Blockbench
     const localPos = new THREE.Vector3(
         pos[0] - cube.origin[0],
@@ -93,7 +140,6 @@ function showVertexDot(cube: Cube, direction: string, vertexIndex: number) {
 
     vertexDot.visible = true;
 
-    // @ts-expect-error: scene access
     if (!vertexDot.parent) {
         Canvas.scene.add(vertexDot);
     }
@@ -117,48 +163,45 @@ function removeVertexDot() {
 const vueComponent = {
     template: `
         <div>
-            <p v-if="!hasFace" class="panel_message">Select a face to edit VS properties</p>
+            <p v-if="!selectedCube" class="vs_fp_message">Select a cube to edit face properties</p>
             <div v-else>
-                <div class="vs_face_props_header">
-                    <label class="vs_face_props_face_label">{{ selectedFaceName }}</label>
-                    <label class="vs_face_props_apply_all">
-                        <input type="checkbox" v-model="applyToAll"> All faces
+                <div class="vs_fp_header">
+                    <div class="vs_fp_face_buttons">
+                        <div v-for="dir in faceDirections" :key="dir"
+                            class="vs_fp_face_btn" :class="{ active: selectedFaceName === dir }"
+                            :style="{ '--face-color': faceColors[dir] }"
+                            @click="selectFace(dir)">{{ faceLabels[dir] }}</div>
+                    </div>
+                    <label class="vs_fp_apply_all">
+                        <input type="checkbox" v-model="applyToAll"> All
                     </label>
                 </div>
 
-                <div class="vs_face_props_section">
-                    <label class="vs_face_props_label">Glow Level</label>
+                <div class="vs_fp_section">
+                    <label class="vs_fp_label">Glow Level (0-255)</label>
                     <input type="number" class="dark_bordered" min="0" max="255" step="1"
                         :value="glow" @input="setGlow($event.target.value)">
                 </div>
 
-                <div class="vs_face_props_section">
-                    <label class="vs_face_props_label">Reflective Mode</label>
+                <div class="vs_fp_section">
+                    <label class="vs_fp_label">Reflective Mode</label>
                     <select class="dark_bordered" :value="reflectiveMode" @change="setReflectiveMode($event.target.value)">
                         <option v-for="(label, value) in reflectiveModeOptions" :value="value" :key="value">{{ label }}</option>
                     </select>
                 </div>
 
-                <div class="vs_face_props_section">
-                    <label class="vs_face_props_label">Wind Mode</label>
-                    <div class="vs_face_props_vector4">
-                        <select v-for="i in 4" :key="'wm'+i" class="dark_bordered vs_face_props_v4_input"
-                            :value="getWindModeComponent(i-1)" @change="setWindModeComponent(i-1, $event.target.value)"
-                            @mouseenter="highlightVertex(i-1)" @mouseleave="clearVertex()"
-                            @focus="highlightVertex(i-1)" @blur="clearVertex()">
-                            <option v-for="(label, value) in windModeOptions" :value="value" :key="value">{{ label }}</option>
-                        </select>
-                    </div>
+                <div class="vs_fp_section" v-for="i in 4" :key="'wm'+i">
+                    <label class="vs_fp_label">Wind Mode {{ i }}</label>
+                    <select class="dark_bordered" :value="getWindModeComponent(i-1)" @change="setWindModeComponent(i-1, $event.target.value)"
+                        @mouseenter="highlightVertex(i-1)" @mouseleave="clearVertex()"
+                        @focus="highlightVertex(i-1)" @blur="clearVertex()">
+                        <option v-for="(label, value) in windModeOptions" :value="value" :key="value">{{ label }}</option>
+                    </select>
                 </div>
 
-                <div class="vs_face_props_section">
-                    <label class="vs_face_props_label">Wind Data</label>
-                    <div class="vs_face_props_vector4">
-                        <input v-for="i in 4" :key="'wd'+i" type="number" class="dark_bordered vs_face_props_v4_input"
-                            :value="getWindDataComponent(i-1)" @input="setWindDataComponent(i-1, $event.target.value)"
-                            @mouseenter="highlightVertex(i-1)" @mouseleave="clearVertex()"
-                            @focus="highlightVertex(i-1)" @blur="clearVertex()">
-                    </div>
+                <div class="vs_fp_section">
+                    <label class="vs_fp_label">Wind Data</label>
+                    <input type="text" class="dark_bordered" :value="windDataDisplay" disabled>
                 </div>
             </div>
         </div>
@@ -166,20 +209,23 @@ const vueComponent = {
     data() {
         return {
             selectedCube: null as Cube | null,
-            selectedFaceName: '' as string,
+            selectedFaceName: 'north' as string,
             applyToAll: false,
             glow: 0,
             reflectiveMode: '0',
-            windMode: [null, null, null, null] as (number | null)[],
+            windMode: [-1, -1, -1, -1] as number[],
             windData: [0, 0, 0, 0] as number[],
             windModeOptions: WIND_MODE_OPTIONS,
             reflectiveModeOptions: REFLECTIVE_MODE_OPTIONS,
+            faceDirections: FACE_DIRECTIONS,
+            faceLabels: FACE_LABELS,
+            faceColors: FACE_COLORS,
             _listeners: [] as Array<() => void>,
         };
     },
     computed: {
-        hasFace(): boolean {
-            return !!(this as any).selectedCube && !!(this as any).selectedFaceName;
+        windDataDisplay(): string {
+            return (this as any).windData.join(', ');
         }
     },
     methods: {
@@ -200,6 +246,12 @@ const vueComponent = {
             const face = self.getSelectedFace();
             if (!face) return [];
             return [{ face, direction: self.selectedFaceName }];
+        },
+
+        selectFace(direction: string) {
+            const self = this as any;
+            self.selectedFaceName = direction;
+            self.loadFromFace();
         },
 
         highlightVertex(index: number) {
@@ -230,49 +282,52 @@ const vueComponent = {
         },
 
         getWindModeComponent(index: number): string {
-            const val = (this as any).windMode[index];
-            return val === null || val === undefined ? '' : String(val);
+            return String((this as any).windMode[index] ?? -1);
         },
 
         setWindModeComponent(index: number, value: string) {
             const self = this as any;
-            const num = value === '' ? null : parseInt(value);
+            const num = parseInt(value);
             self.windMode[index] = num;
             // Force reactivity
             self.windMode = [...self.windMode];
 
-            for (const { face } of self.getTargetFaces()) {
+            for (const { face, direction } of self.getTargetFaces()) {
                 if (!face.windMode) {
-                    face.windMode = [0, 0, 0, 0];
+                    face.windMode = [-1, -1, -1, -1];
                 }
-                face.windMode[index] = num ?? 0;
-                // If all components are 0/null, clear windMode
-                if (face.windMode.every((v: number) => v === 0)) {
+                face.windMode[index] = num;
+
+                // Auto-compute wind data when wind mode changes (matching VSMC behavior)
+                if (self.selectedCube) {
+                    const autoData = computeWindData(self.selectedCube, direction);
+                    if (autoData[0] !== 0 || autoData[1] !== 0 || autoData[2] !== 0 || autoData[3] !== 0) {
+                        face.windData = autoData;
+                    } else {
+                        face.windData = undefined;
+                    }
+                }
+
+                // If all components are default (-1), clear windMode
+                if (face.windMode.every((v: number) => v === -1)) {
                     face.windMode = undefined;
-                }
-            }
-        },
-
-        getWindDataComponent(index: number): number {
-            return (this as any).windData[index] || 0;
-        },
-
-        setWindDataComponent(index: number, value: string) {
-            const self = this as any;
-            const num = parseInt(value) || 0;
-            self.windData[index] = num;
-            // Force reactivity
-            self.windData = [...self.windData];
-
-            for (const { face } of self.getTargetFaces()) {
-                if (!face.windData) {
-                    face.windData = [0, 0, 0, 0];
-                }
-                face.windData[index] = num;
-                // If all components are 0, clear windData
-                if (face.windData.every((v: number) => v === 0)) {
                     face.windData = undefined;
                 }
+            }
+
+            // Update wind data display
+            self.updateWindDataDisplay();
+        },
+
+        updateWindDataDisplay() {
+            const self = this as any;
+            const face = self.getSelectedFace();
+            if (face && face.windData) {
+                self.windData = [...face.windData];
+            } else if (self.selectedCube && self.selectedFaceName) {
+                self.windData = computeWindData(self.selectedCube, self.selectedFaceName);
+            } else {
+                self.windData = [0, 0, 0, 0];
             }
         },
 
@@ -282,68 +337,39 @@ const vueComponent = {
             if (!face) {
                 self.glow = 0;
                 self.reflectiveMode = '0';
-                self.windMode = [null, null, null, null];
+                self.windMode = [-1, -1, -1, -1];
                 self.windData = [0, 0, 0, 0];
                 return;
             }
             self.glow = face.glow || 0;
             self.reflectiveMode = String(face.reflectiveMode || 0);
-            self.windMode = face.windMode ? [...face.windMode] : [null, null, null, null];
-            self.windData = face.windData ? [...face.windData] : [0, 0, 0, 0];
-        },
-
-        getSelectedFaceName(): string {
-            // @ts-expect-error: UVEditor types incomplete
-            const selectedFaces = UVEditor?.vue?.selected_faces;
-            if (selectedFaces && selectedFaces.length > 0) {
-                return selectedFaces[0];
-            }
-            return 'north';
+            self.windMode = face.windMode ? [...face.windMode] : [-1, -1, -1, -1];
+            self.updateWindDataDisplay();
         },
 
         updateSelection() {
             const self = this as any;
             hideVertexDot();
 
-            // Find selected cube
             const selected = Cube.selected;
             if (!selected || selected.length === 0) {
                 self.selectedCube = null;
-                self.selectedFaceName = '';
+                self.selectedFaceName = 'north';
                 return;
             }
             self.selectedCube = selected[0];
-            self.selectedFaceName = self.getSelectedFaceName();
             self.loadFromFace();
         },
-
-        // Polls for face selection changes (UV editor doesn't fire events for face clicks)
-        pollFaceSelection() {
-            const self = this as any;
-            if (!self.selectedCube) return;
-            const currentFace = self.getSelectedFaceName();
-            if (currentFace !== self.selectedFaceName) {
-                self.selectedFaceName = currentFace;
-                self.loadFromFace();
-            }
-        }
     },
     mounted() {
         const self = this as any;
         self.updateSelection();
 
-        // Listen for element selection changes
         const onSelectionUpdate = () => self.updateSelection();
         Blockbench.on('update_selection' as EventName, onSelectionUpdate);
-        Blockbench.on('update_faces' as EventName, onSelectionUpdate);
-
-        // Poll for face selection changes (UV editor face clicks don't fire events)
-        const pollInterval = setInterval(() => self.pollFaceSelection(), 100);
 
         self._listeners = [
             () => Blockbench.removeListener('update_selection' as EventName, onSelectionUpdate),
-            () => Blockbench.removeListener('update_faces' as EventName, onSelectionUpdate),
-            () => clearInterval(pollInterval),
         ];
     },
     beforeDestroy() {
@@ -374,57 +400,71 @@ createBlockbenchMod(
             component: vueComponent
         });
 
-        // Add CSS styles
         const style = document.createElement('style');
         style.id = 'vs-face-panel-styles';
         style.textContent = `
-            .vs_face_props_header {
+            .vs_fp_message {
+                padding: 8px;
+                color: var(--color-subtle_text);
+                text-align: center;
+            }
+            .vs_fp_header {
                 display: flex;
-                justify-content: space-between;
                 align-items: center;
                 padding: 4px 8px;
                 border-bottom: 1px solid var(--color-border);
                 margin-bottom: 6px;
+                gap: 6px;
             }
-            .vs_face_props_face_label {
+            .vs_fp_face_buttons {
+                display: flex;
+                gap: 2px;
+                flex: 1;
+            }
+            .vs_fp_face_btn {
+                flex: 1;
+                text-align: center;
+                padding: 3px 0;
+                font-size: 12px;
                 font-weight: bold;
-                text-transform: capitalize;
+                cursor: pointer;
+                border-radius: 3px;
+                color: var(--face-color);
+                background: var(--color-back);
+                border: 1px solid var(--color-border);
+                transition: background 0.1s;
             }
-            .vs_face_props_apply_all {
+            .vs_fp_face_btn:hover {
+                background: var(--color-button);
+            }
+            .vs_fp_face_btn.active {
+                background: var(--color-button);
+                border-color: var(--face-color);
+                box-shadow: 0 0 0 1px var(--face-color);
+            }
+            .vs_fp_apply_all {
                 display: flex;
                 align-items: center;
                 gap: 4px;
                 font-size: 12px;
                 cursor: pointer;
+                white-space: nowrap;
             }
-            .vs_face_props_section {
+            .vs_fp_section {
                 padding: 2px 8px;
                 margin-bottom: 4px;
             }
-            .vs_face_props_label {
+            .vs_fp_label {
                 display: block;
                 font-size: 12px;
                 color: var(--color-subtle_text);
                 margin-bottom: 2px;
             }
-            .vs_face_props_section input[type="number"],
-            .vs_face_props_section select {
+            .vs_fp_section input[type="number"],
+            .vs_fp_section input[type="text"],
+            .vs_fp_section select {
                 width: 100%;
                 box-sizing: border-box;
-            }
-            .vs_face_props_vector4 {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 4px;
-            }
-            .vs_face_props_v4_input {
-                width: 100% !important;
-                box-sizing: border-box;
-            }
-            .panel_message {
-                padding: 8px;
-                color: var(--color-subtle_text);
-                text-align: center;
             }
         `;
         document.head.appendChild(style);

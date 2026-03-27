@@ -75,13 +75,12 @@ export function process_group(
     }
 
     const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
-    const includeRotationOrigin = hasRotation || (node as any).vs_has_rotation_origin;
 
     const vsElement: VS_Element = {
         name: node.name,
         from: from,
         to: to,
-        ...(includeRotationOrigin && { rotationOrigin: rotationOrigin }),
+        rotationOrigin: rotationOrigin,
         ...((node as any).vs_uv ? { uv: (node as any).vs_uv } : undefined),
         ...(converted_rotation[0] !== 0 && { rotationX: converted_rotation[0] }),
         ...(converted_rotation[1] !== 0 && { rotationY: converted_rotation[1] }),
@@ -184,13 +183,12 @@ export function process_collapsed_group(
     const reduced_faces = process_faces(geoChild.faces);
 
     const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
-    const includeRotationOrigin = hasRotation || (node as any).vs_has_rotation_origin;
 
     const vsElement: VS_Element = {
         name: node.name,
         from: from,
         to: to,
-        ...(includeRotationOrigin && { rotationOrigin: rotationOrigin }),
+        rotationOrigin: rotationOrigin,
         ...((geoChild as any).vs_uv ? { uv: (geoChild as any).vs_uv } : ((geoChild.uv_offset[0] !== 0 || geoChild.uv_offset[1] !== 0) && { uv: geoChild.uv_offset })),
         ...(converted_rotation[0] !== 0 && { rotationX: converted_rotation[0] }),
         ...(converted_rotation[1] !== 0 && { rotationY: converted_rotation[1] }),

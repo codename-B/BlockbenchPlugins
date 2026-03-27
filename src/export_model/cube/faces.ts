@@ -57,22 +57,26 @@ export function process_faces(faces: Partial<Record<CardinalDirection, CubeFace>
             const prop_name = prop.name;
             const value = face[prop_name];
 
-            // Skip properties with default/empty values
-            if (value !== undefined && value !== null) {
-                // Skip 0 for numeric properties (glow, reflectiveMode)
-                if (typeof value === 'number' && value === 0) {
-                    continue;
-                }
-                // Skip default arrays like [0,0,0,0] for windMode/windData
-                if (Array.isArray(value) && value.every(v => v === 0)) {
-                    continue;
-                }
-                // Skip false for boolean face properties (autoUv, snapUv default to false in VS)
-                if (typeof value === 'boolean' && value === false) {
-                    continue;
-                }
+            if (value === undefined || value === null) continue;
+
+            // windMode: skip when all vertices are "Default" (-1); [0,0,0,0] = NoWind is valid
+            if (prop_name === 'windMode') {
+                if (Array.isArray(value) && value.every((v: number) => v === -1)) continue;
                 processed_face[prop_name] = value;
+                continue;
             }
+            // windData: skip when all zeros
+            if (prop_name === 'windData') {
+                if (Array.isArray(value) && value.every((v: number) => v === 0)) continue;
+                processed_face[prop_name] = value;
+                continue;
+            }
+            // Skip 0 for numeric properties (glow, reflectiveMode)
+            if (typeof value === 'number' && value === 0) continue;
+            // Skip false for boolean face properties (autoUv, snapUv default to false in VS)
+            if (typeof value === 'boolean' && value === false) continue;
+
+            processed_face[prop_name] = value;
         }
         processed_faces[direction] = new oneLiner(processed_face);
     }
