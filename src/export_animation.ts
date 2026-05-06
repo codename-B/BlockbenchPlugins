@@ -20,6 +20,7 @@ export function export_animations(): Array<VS_Animation> {
     (Animation as unknown as typeof _Animation).all.forEach(animation => {
         const keyframes: Record<number,VS_Keyframe> = {};
         const fps = util.fps;
+        const baseFrameCount = get_base_frame_quantity(animation);
         const animators = Object.values(animation.animators || {});
         let hasNonLinearInterpolation = false;
 
@@ -56,9 +57,9 @@ export function export_animations(): Array<VS_Animation> {
                             keyframes[frame].elements[bone_name].offsetZ = Number(dataPoint.z);
                             break;
                         case 'scale':
-                            if (dataPoint.x !== 1) keyframes[frame].elements[bone_name].scaleX = Number(dataPoint.x);
-                            if (dataPoint.y !== 1) keyframes[frame].elements[bone_name].scaleY = Number(dataPoint.y);
-                            if (dataPoint.z !== 1) keyframes[frame].elements[bone_name].scaleZ = Number(dataPoint.z);
+                            if (dataPoint.x !== 1) keyframes[frame].elements[bone_name].stretchX = Number(dataPoint.x);
+                            if (dataPoint.y !== 1) keyframes[frame].elements[bone_name].stretchY = Number(dataPoint.y);
+                            if (dataPoint.z !== 1) keyframes[frame].elements[bone_name].stretchZ = Number(dataPoint.z);
                             break;
                     }
                 });
@@ -81,6 +82,8 @@ export function export_animations(): Array<VS_Animation> {
                 });
             }
         });
+
+        normalize_terminal_keyframe(keyframes, baseFrameCount);
 
         // Wraps all animation elements into oneLiner wrappers (after all animators are processed)
         for(const keyframe of Object.values(keyframes)) {
@@ -119,8 +122,8 @@ export function export_animations(): Array<VS_Animation> {
         }
 
         // For looping animations, insert a virtual end frame copying frame 0
-        // so VS can interpolate back to the start. quantityframes is 0-indexed
-        // in VS, so the last frame is quantityframes - 1.
+        // so VS can interpolate back to the start. QuantityFrames is a frame count,
+        // so the last valid frame is quantityframes - 1.
         if (vsAnimation.onAnimationEnd === "Repeat" && vsAnimation.quantityframes > 0) {
             const lastFrame = vsAnimation.quantityframes - 1;
             const hasLastFrame = vsAnimation.keyframes.some(kf => kf.frame === lastFrame);
@@ -157,9 +160,9 @@ export function export_animations(): Array<VS_Animation> {
  * @param keyframes Keyframes
  */
 function get_frame_quantity(animation: _Animation, keyframes: Record<number,VS_Keyframe>): number {
-    // VS uses QuantityFrames as array size — valid frames are 0..QuantityFrames-1.
-    // We need QuantityFrames > max keyframe frame number.
-    const quantityframes = Math.round(animation.length * util.fps) + 1;
+    // VS uses QuantityFrames as a frame count.
+    // A 60-frame animation should export with QuantityFrames = 60 and a last valid frame of 59.
+    const quantityframes = get_base_frame_quantity(animation);
     const keyframe_frames = Object.keys(keyframes).map(kf => parseInt(kf));
     if (keyframe_frames.length === 0) {
         return quantityframes;
@@ -172,6 +175,65 @@ function get_frame_quantity(animation: _Animation, keyframes: Record<number,VS_K
     return quantityframes;
 }
 
+function get_base_frame_quantity(animation: _Animation): number {
+    return Math.max(1, Math.round(animation.length * util.fps));
+}
+
+function normalize_terminal_keyframe(
+    keyframes: Record<number,VS_Keyframe>,
+    quantityframes: number
+) {
+    const terminalFrame = quantityframes;
+    const lastExportableFrame = quantityframes - 1;
+    const terminalKeyframe = keyframes[terminalFrame];
+
+    if (!terminalKeyframe) {
+        return;
+    }
+
+    const previousKeyframe = keyframes[lastExportableFrame];
+    if (previousKeyframe) {
+        if (keyframe_contents_match(previousKeyframe, terminalKeyframe)) {
+            delete keyframes[terminalFrame];
+            return;
+        }
+        return;
+    }
+
+    const shiftedKeyframe = clone_keyframe(terminalKeyframe);
+    shiftedKeyframe.frame = lastExportableFrame;
+    keyframes[lastExportableFrame] = shiftedKeyframe;
+    delete keyframes[terminalFrame];
+}
+
+function keyframe_contents_match(a: VS_Keyframe, b: VS_Keyframe): boolean {
+    return stable_keyframe_content(a) === stable_keyframe_content(b);
+}
+
+function stable_keyframe_content(keyframe: VS_Keyframe): string {
+    return JSON.stringify({
+        elements: sort_nested_object(keyframe.elements),
+        textures: keyframe.textures ? sort_nested_object(keyframe.textures) : undefined
+    });
+}
+
+function sort_nested_object(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(sort_nested_object);
+    }
+    if (value && typeof value === "object") {
+        return Object.fromEntries(
+            Object.entries(value)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([key, nestedValue]) => [key, sort_nested_object(nestedValue)])
+        );
+    }
+    return value;
+}
+
+function clone_keyframe(keyframe: VS_Keyframe): VS_Keyframe {
+    return JSON.parse(JSON.stringify(keyframe)) as VS_Keyframe;
+}
 
 /**
  * Parses a Blockbench effect timeline script for texture swap data.

@@ -48,8 +48,8 @@ export function import_animations(animations: Array<VS_Animation>) {
                         animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'position', data_points: [{ x: position[0] || 0, y: position[1] || 0, z: position[2] || 0 }] });
                     }
 
-                    if (transform.scaleX != null || transform.scaleY != null || transform.scaleZ != null) {
-                        animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'scale', data_points: [{ x: transform.scaleX ?? 1, y: transform.scaleY ?? 1, z: transform.scaleZ ?? 1 }] });
+                    if (transform.stretchX != null || transform.stretchY != null || transform.stretchZ != null) {
+                        animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'scale', data_points: [{ x: transform.stretchX ?? 1, y: transform.stretchY ?? 1, z: transform.stretchZ ?? 1 }] });
                     }
                 }
             }

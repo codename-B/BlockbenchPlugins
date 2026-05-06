@@ -107,9 +107,9 @@ export interface VS_AnimationKey {
     rotShortestDistanceX?: boolean,
     rotShortestDistanceY?: boolean,
     rotShortestDistanceZ?: boolean,
-    scaleX?: number,
-    scaleY?: number,
-    scaleZ?: number,
+    stretchX?: number,
+    stretchY?: number,
+    stretchZ?: number,
 }
 
 /**
