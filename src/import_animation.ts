@@ -1,5 +1,5 @@
 import * as util from "./util";
-import { VS_Animation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_KeyFrameInterpolation } from "./vs_shape_def";
 
 /**
  * Imports animations from the Vintage Story format into Blockbench.
@@ -7,7 +7,6 @@ import { VS_Animation } from "./vs_shape_def";
  */
 export function import_animations(animations: Array<VS_Animation>) {
     const FPS = util.fps;
-    const interpolationMode = "linear";
 
     animations.forEach(vsAnimation => {
         const animationLength = vsAnimation.quantityframes / FPS;
@@ -39,20 +38,69 @@ export function import_animations(animations: Array<VS_Animation>) {
                     const animator = animation.getBoneAnimator(bone);
 
                     if (transform.rotationX != null || transform.rotationY != null || transform.rotationZ != null) {
-                        const rotation = [transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0];
-                        animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'rotation', data_points: [{ x: rotation[0], y: rotation[1], z: rotation[2] }] });
+                        const value = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
+                        animator.addKeyframe(buildBBKeyframeOptions(time, 'rotation', value, transform.rotationInterp,
+                            transform.rotationTangentInX, transform.rotationTangentInY, transform.rotationTangentInZ,
+                            transform.rotationTangentOutX, transform.rotationTangentOutY, transform.rotationTangentOutZ));
                     }
 
                     if (transform.offsetX != null || transform.offsetY != null || transform.offsetZ != null) {
-                        const position = [transform.offsetX || 0, transform.offsetY || 0, transform.offsetZ || 0];
-                        animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'position', data_points: [{ x: position[0] || 0, y: position[1] || 0, z: position[2] || 0 }] });
+                        const value = { x: transform.offsetX || 0, y: transform.offsetY || 0, z: transform.offsetZ || 0 };
+                        animator.addKeyframe(buildBBKeyframeOptions(time, 'position', value, transform.positionInterp,
+                            transform.offsetTangentInX, transform.offsetTangentInY, transform.offsetTangentInZ,
+                            transform.offsetTangentOutX, transform.offsetTangentOutY, transform.offsetTangentOutZ));
                     }
 
                     if (transform.stretchX != null || transform.stretchY != null || transform.stretchZ != null) {
-                        animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'scale', data_points: [{ x: transform.stretchX ?? 1, y: transform.stretchY ?? 1, z: transform.stretchZ ?? 1 }] });
+                        const value = { x: transform.stretchX ?? 1, y: transform.stretchY ?? 1, z: transform.stretchZ ?? 1 };
+                        animator.addKeyframe(buildBBKeyframeOptions(time, 'scale', value, transform.scaleInterp,
+                            transform.stretchTangentInX, transform.stretchTangentInY, transform.stretchTangentInZ,
+                            transform.stretchTangentOutX, transform.stretchTangentOutY, transform.stretchTangentOutZ));
                     }
                 }
             }
         });
     });
 };
+
+// Build keyframe options for Blockbench, restoring interpolation mode and bezier handles
+// where present. Blockbench stores `bezier_right_value`/`bezier_left_value` as deltas
+// added to the keyframe value (see Blockbench keyframe.js getBezierLerp), so the inverse
+// of the export's `out = 3*delta`, `in = -3*delta` is `delta = out/3`, `delta = -in/3`.
+function buildBBKeyframeOptions(
+    time: number,
+    channel: 'rotation' | 'position' | 'scale',
+    value: { x: number, y: number, z: number },
+    interp: VS_KeyFrameInterpolation | undefined,
+    tInX: number | undefined, tInY: number | undefined, tInZ: number | undefined,
+    tOutX: number | undefined, tOutY: number | undefined, tOutZ: number | undefined,
+): KeyframeOptions {
+    const bbInterp = mapInterpolation(interp);
+    const opts: KeyframeOptions = {
+        interpolation: bbInterp,
+        time,
+        channel,
+        data_points: [{ x: value.x, y: value.y, z: value.z }],
+    };
+
+    if (bbInterp === 'bezier') {
+        opts.bezier_right_value = [
+            (tOutX ?? 0) / 3,
+            (tOutY ?? 0) / 3,
+            (tOutZ ?? 0) / 3,
+        ];
+        opts.bezier_left_value = [
+            -(tInX ?? 0) / 3,
+            -(tInY ?? 0) / 3,
+            -(tInZ ?? 0) / 3,
+        ];
+    }
+
+    return opts;
+}
+
+function mapInterpolation(interp: VS_KeyFrameInterpolation | undefined): 'linear' | 'bezier' | 'step' {
+    if (interp === 'Bezier') return 'bezier';
+    if (interp === 'Step') return 'step';
+    return 'linear';
+}

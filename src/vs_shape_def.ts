@@ -93,6 +93,13 @@ export interface VS_Keyframe {
 }
 
 /**
+ * Per-channel interpolation mode for the OUTGOING segment from this keyframe to
+ * the next. Linear is the default and matches the engine's legacy behaviour.
+ * Bezier uses cubic-Hermite tangents; Step holds prev value until the next keyframe.
+ */
+export type VS_KeyFrameInterpolation = "Linear" | "Bezier" | "Step"
+
+/**
  * Json Attributes also include
  * OriginX, OriginY, OriginZ
  * but they are not used by any VS shape files currently.
@@ -110,6 +117,33 @@ export interface VS_AnimationKey {
     stretchX?: number,
     stretchY?: number,
     stretchZ?: number,
+
+    positionInterp?: VS_KeyFrameInterpolation,
+    rotationInterp?: VS_KeyFrameInterpolation,
+    scaleInterp?: VS_KeyFrameInterpolation,
+
+    // Cubic-Hermite tangents in value-per-segment-t units. Non-null only when
+    // the corresponding channel uses bezier interpolation.
+    offsetTangentInX?: number,
+    offsetTangentInY?: number,
+    offsetTangentInZ?: number,
+    offsetTangentOutX?: number,
+    offsetTangentOutY?: number,
+    offsetTangentOutZ?: number,
+
+    rotationTangentInX?: number,
+    rotationTangentInY?: number,
+    rotationTangentInZ?: number,
+    rotationTangentOutX?: number,
+    rotationTangentOutY?: number,
+    rotationTangentOutZ?: number,
+
+    stretchTangentInX?: number,
+    stretchTangentInY?: number,
+    stretchTangentInZ?: number,
+    stretchTangentOutX?: number,
+    stretchTangentOutY?: number,
+    stretchTangentOutZ?: number,
 }
 
 /**
