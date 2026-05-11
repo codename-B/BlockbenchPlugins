@@ -5,13 +5,16 @@ import { is_backdrop_project } from "./util/misc";
 type BBChannel = 'position' | 'rotation' | 'scale';
 
 // Maps a Blockbench keyframe interpolation mode to the engine's mode. Linear is
-// returned as null (the default; field omitted from JSON). Catmullrom has no
-// direct engine equivalent and falls back to linear with a warning.
-function mapInterpolation(bbMode: string | undefined): { mode: VS_KeyFrameInterpolation | null, warn: boolean } {
-    if (!bbMode || bbMode === 'linear') return { mode: null, warn: false };
-    if (bbMode === 'bezier') return { mode: 'Bezier', warn: false };
-    if (bbMode === 'step') return { mode: 'Step', warn: false };
-    return { mode: null, warn: true };
+// returned as null (the default; field omitted from JSON). Catmullrom converts to
+// Bezier with computed Hermite tangents (see computeCatmullRomTangents) so smooth
+// curves are preserved on export — the engine has no native Catmull-Rom mode but
+// the conversion is exact for uniform spacing and a good approximation otherwise.
+function mapInterpolation(bbMode: string | undefined): { mode: VS_KeyFrameInterpolation | null, isCatmull: boolean } {
+    if (!bbMode || bbMode === 'linear') return { mode: null, isCatmull: false };
+    if (bbMode === 'bezier') return { mode: 'Bezier', isCatmull: false };
+    if (bbMode === 'step') return { mode: 'Step', isCatmull: false };
+    if (bbMode === 'catmullrom') return { mode: 'Bezier', isCatmull: true };
+    return { mode: null, isCatmull: false };
 }
 
 // Cubic Bezier handle (value-delta) -> cubic Hermite tangent at the segment's near end.
@@ -28,6 +31,71 @@ function outTangentFromDelta(delta: number): number {
 }
 function inTangentFromDelta(delta: number): number {
     return -3 * delta;
+}
+
+// Computes a Catmull-Rom keyframe's Hermite tangent in value-per-segment-t units for both
+// segment sides (out into the next segment, in from the prev segment). The instantaneous
+// slope at frame_i is `(P_{i+1} - P_{i-1}) / (frame_{i+1} - frame_{i-1})` — the symmetric
+// finite difference. Scaling that slope by each adjacent segment's frame duration gives
+// the per-segment-t tangent the engine expects.
+//
+// Boundary cases (no prev, no next, single keyframe) fall back to one-sided differences
+// so the converted Bezier still has a sensible slope at endpoints.
+function computeCatmullRomTangents(
+    channelKfs: _Keyframe[],
+    idx: number,
+    axis: 'x' | 'y' | 'z',
+    fps: number,
+): { out: number, in: number } {
+    const cur = channelKfs[idx];
+    const prev = idx > 0 ? channelKfs[idx - 1] : null;
+    const next = idx < channelKfs.length - 1 ? channelKfs[idx + 1] : null;
+
+    const curFrame = Math.round(cur.time * fps);
+    const curVal = Number(cur.data_points[0][axis]);
+
+    let slopePerFrame = 0;
+    if (prev && next) {
+        const prevFrame = Math.round(prev.time * fps);
+        const nextFrame = Math.round(next.time * fps);
+        const span = nextFrame - prevFrame;
+        if (span > 0) {
+            slopePerFrame = (Number(next.data_points[0][axis]) - Number(prev.data_points[0][axis])) / span;
+        }
+    } else if (next) {
+        const nextFrame = Math.round(next.time * fps);
+        const span = nextFrame - curFrame;
+        if (span > 0) slopePerFrame = (Number(next.data_points[0][axis]) - curVal) / span;
+    } else if (prev) {
+        const prevFrame = Math.round(prev.time * fps);
+        const span = curFrame - prevFrame;
+        if (span > 0) slopePerFrame = (curVal - Number(prev.data_points[0][axis])) / span;
+    }
+
+    const outDur = next ? Math.max(0, Math.round(next.time * fps) - curFrame) : 0;
+    const inDur = prev ? Math.max(0, curFrame - Math.round(prev.time * fps)) : 0;
+    return { out: slopePerFrame * outDur, in: slopePerFrame * inDur };
+}
+
+function applyCatmullRomToKey(
+    elem: VS_AnimationKey,
+    channel: BBChannel,
+    channelKfs: _Keyframe[],
+    idx: number,
+    fps: number,
+) {
+    const fields = CHANNEL_FIELDS[channel];
+    (elem as any)[fields.interp] = 'Bezier';
+
+    const tx = computeCatmullRomTangents(channelKfs, idx, 'x', fps);
+    const ty = computeCatmullRomTangents(channelKfs, idx, 'y', fps);
+    const tz = computeCatmullRomTangents(channelKfs, idx, 'z', fps);
+    if (tx.out !== 0) (elem as any)[fields.tangentOutX] = tx.out;
+    if (ty.out !== 0) (elem as any)[fields.tangentOutY] = ty.out;
+    if (tz.out !== 0) (elem as any)[fields.tangentOutZ] = tz.out;
+    if (tx.in !== 0) (elem as any)[fields.tangentInX] = tx.in;
+    if (ty.in !== 0) (elem as any)[fields.tangentInY] = ty.in;
+    if (tz.in !== 0) (elem as any)[fields.tangentInZ] = tz.in;
 }
 
 interface ChannelFieldNames {
@@ -93,15 +161,16 @@ export function export_animations(): Array<VS_Animation> {
         return [];
     }
 
-    // Track animations using catmullrom (no engine equivalent) so the user gets a warning.
-    const animationsWithUnsupportedInterpolation: string[] = [];
+    // Track animations whose catmull-rom keyframes got converted to bezier, so we can
+    // surface a single informational popup at the end of the export.
+    const animationsWithCatmullConversion: string[] = [];
 
     (Animation as unknown as typeof _Animation).all.forEach(animation => {
         const keyframes: Record<number,VS_Keyframe> = {};
         const fps = util.fps;
         const baseFrameCount = get_base_frame_quantity(animation);
         const animators = Object.values(animation.animators || {});
-        let hasUnsupportedInterpolation = false;
+        let hadCatmullConversion = false;
 
         animators.forEach(animator => {
             if (animator.type === 'bone' && animator.keyframes && animator.keyframes.length > 0) {
@@ -111,9 +180,19 @@ export function export_animations(): Array<VS_Animation> {
                 }
                 const bone_name = animator.name;
 
+                // Catmull-Rom -> Bezier conversion needs the prev/next keyframes in the SAME
+                // channel (matching the engine's per-channel keyframe walk). Pre-sort once.
+                const byChannel: Record<BBChannel, _Keyframe[]> = { position: [], rotation: [], scale: [] };
                 animator.keyframes.forEach(kf => {
-                    const { mode: vsInterp, warn } = mapInterpolation(kf.interpolation);
-                    if (warn) hasUnsupportedInterpolation = true;
+                    if (kf.channel === 'position' || kf.channel === 'rotation' || kf.channel === 'scale') {
+                        byChannel[kf.channel].push(kf);
+                    }
+                });
+                (Object.keys(byChannel) as BBChannel[]).forEach(ch => byChannel[ch].sort((a, b) => a.time - b.time));
+
+                animator.keyframes.forEach(kf => {
+                    const { mode: vsInterp, isCatmull } = mapInterpolation(kf.interpolation);
+                    if (isCatmull) hadCatmullConversion = true;
 
                     const frame = Math.round(kf.time * fps);
                     keyframes[frame] = keyframes[frame] || { frame, elements: {} };
@@ -122,24 +201,36 @@ export function export_animations(): Array<VS_Animation> {
 
                     const dataPoint = kf.data_points[0];
                     const value = { x: Number(dataPoint.x), y: Number(dataPoint.y), z: Number(dataPoint.z) };
+                    const channel = kf.channel as BBChannel;
+                    const channelKfs = channel in byChannel ? byChannel[channel] : null;
+
+                    const applyInterp = () => {
+                        if (!vsInterp) return;
+                        if (isCatmull && channelKfs) {
+                            applyCatmullRomToKey(elem, channel, channelKfs, channelKfs.indexOf(kf), fps);
+                        } else {
+                            applyInterpolationToKey(elem, channel, kf, value, vsInterp);
+                        }
+                    };
+
                     switch (kf.channel) {
                         case 'rotation':
                             elem.rotationX = value.x;
                             elem.rotationY = value.y;
                             elem.rotationZ = value.z;
-                            if (vsInterp) applyInterpolationToKey(elem, 'rotation', kf, value, vsInterp);
+                            applyInterp();
                             break;
                         case 'position':
                             elem.offsetX = value.x;
                             elem.offsetY = value.y;
                             elem.offsetZ = value.z;
-                            if (vsInterp) applyInterpolationToKey(elem, 'position', kf, value, vsInterp);
+                            applyInterp();
                             break;
                         case 'scale':
                             if (value.x !== 1) elem.stretchX = value.x;
                             if (value.y !== 1) elem.stretchY = value.y;
                             if (value.z !== 1) elem.stretchZ = value.z;
-                            if (vsInterp) applyInterpolationToKey(elem, 'scale', kf, value, vsInterp);
+                            applyInterp();
                             break;
                     }
                 });
@@ -220,15 +311,12 @@ export function export_animations(): Array<VS_Animation> {
 
         if (vsAnimation.keyframes.length > 0) {
             animations.push(vsAnimation);
-            if (hasUnsupportedInterpolation) {
-                animationsWithUnsupportedInterpolation.push(animation.name);
-            }
+            if (hadCatmullConversion) animationsWithCatmullConversion.push(animation.name);
         }
     });
 
-    // Warn user if any animations use catmullrom (no engine equivalent)
-    if (animationsWithUnsupportedInterpolation.length > 0) {
-        display_interpolation_warning(animationsWithUnsupportedInterpolation);
+    if (animationsWithCatmullConversion.length > 0) {
+        display_catmull_conversion_notice(animationsWithCatmullConversion);
     }
 
     return animations;
@@ -338,25 +426,25 @@ function parseTextureSwapScript(script: string): Record<string, string> | null {
 function display_animation_length_warning(animation_name: string) {
     Blockbench.showMessageBox({
         title: 'Animation Length Warning',
-        message: 
+        message:
             `The animation "${animation_name}" has keyframes on or past the last frame. ` +
             `This may not animate correctly in Vintage Story. ` +
             `Consider moving the keyframes away from the last frame if you experience issues.`
     });
 }
 
-function display_interpolation_warning(animation_names: string[]) {
+function display_catmull_conversion_notice(animation_names: string[]) {
     const animationList = animation_names.length === 1
         ? `"${animation_names[0]}"`
         : animation_names.map(name => `"${name}"`).join(', ');
 
     Blockbench.showMessageBox({
-        title: 'Interpolation Warning',
+        title: 'Catmull-Rom Converted to Bezier',
         message:
-            `The following animation(s) use catmull-rom interpolation: ${animationList}\n\n` +
-            `Vintage Story supports linear, bezier, and step interpolation, but not ` +
-            `catmull-rom. Catmull-rom keyframes will be exported as linear, which may ` +
-            `change the animation's appearance. Switch them to bezier in Blockbench to ` +
-            `preserve smooth curves.`
+            `The following animation(s) had catmull-rom keyframes: ${animationList}\n\n` +
+            `Vintage Story has no native catmull-rom mode, so these keyframes were exported ` +
+            `as bezier with tangents computed from neighbouring keyframes. The curve is ` +
+            `preserved (exact for uniform keyframe spacing, close otherwise). No action needed.`
     });
 }
+
