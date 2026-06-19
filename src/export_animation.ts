@@ -1,4 +1,4 @@
-import { VS_Animation, VS_AnimationKey, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_AnimationLibrary, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
 import * as util from "./util";
 import { is_backdrop_project } from "./util/misc";
 
@@ -431,6 +431,18 @@ function display_animation_length_warning(animation_name: string) {
             `This may not animate correctly in Vintage Story. ` +
             `Consider moving the keyframes away from the last frame if you experience issues.`
     });
+}
+
+/**
+ * Wraps {@link export_animations} output in a VS_AnimationLibrary structure suitable for
+ * writing to a standalone animation library JSON file (the format consumed by the engine's
+ * `Shape.AnimationLibraries` references).
+ */
+export function export_animation_library(code?: string, name?: string): VS_AnimationLibrary {
+    const library: VS_AnimationLibrary = { animations: export_animations() };
+    if (code) library.code = code;
+    if (name) library.name = name;
+    return library;
 }
 
 function display_catmull_conversion_notice(animation_names: string[]) {

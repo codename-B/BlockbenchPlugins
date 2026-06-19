@@ -1,5 +1,5 @@
 import * as util from "./util";
-import { VS_Animation, VS_AnimationKey, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_AnimationLibrary, VS_KeyFrameInterpolation, VS_Shape } from "./vs_shape_def";
 
 /**
  * Imports animations from the Vintage Story format into Blockbench.
@@ -103,4 +103,30 @@ function mapInterpolation(interp: VS_KeyFrameInterpolation | undefined): 'linear
     if (interp === 'Bezier') return 'bezier';
     if (interp === 'Step') return 'step';
     return 'linear';
+}
+
+/**
+ * Removes every animation from the current project. Returns the count removed.
+ * Animations created in this call go onto the undo stack so the user can revert.
+ */
+export function clear_animations(): number {
+    const all = (Animation as unknown as typeof _Animation).all.slice();
+    all.forEach(a => a.remove(true));
+    return all.length;
+}
+
+/**
+ * Imports animations from either a full VS Shape JSON (which has `animations` at the root)
+ * or a standalone VS_AnimationLibrary JSON (which also has `animations` at the root, plus
+ * optional `code`/`name`). The structures overlap on the `animations` field, so we just
+ * read that field. Existing project animations are left alone — callers can invoke
+ * {@link clear_animations} first if a clean import is wanted.
+ *
+ * Returns the number of animations imported.
+ */
+export function import_animation_library(content: VS_AnimationLibrary | VS_Shape): number {
+    const animations = content?.animations;
+    if (!animations || animations.length === 0) return 0;
+    import_animations(animations);
+    return animations.length;
 }
