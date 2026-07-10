@@ -1,4 +1,5 @@
 import { codecVS } from "./codec";
+import { vsAnimationCodec } from "./animation_codec";
 
 export function create_format(): ModelFormat { 
     const format =  new ModelFormat("formatVS", {
@@ -32,7 +33,9 @@ export function create_format(): ModelFormat {
         select_texture_for_particles: false,
         texture_mcmeta: false,
         bone_binding_expression: false, // Revisit for animation
-        animation_files: false,
+        // Enables Blockbench's multi-file animation workflow: per-animation `path`/`saved_name`,
+        // grouping by file in the ANIMATIONS panel, and per-file Save / Save All / Import.
+        animation_files: true,
         texture_folder: true,
         image_editor: false, // Setting this to true removes the object outliner?!?!
         edit_mode: true,
@@ -40,7 +43,8 @@ export function create_format(): ModelFormat {
         display_mode: false, // Only some Minecraft Skin stuff it seems
         animation_mode: true,
         pose_mode: false,
-        animation_controllers: true,
+        animation_controllers: false, // VS has no animation-controller concept
+
         box_uv_float_size: false,
         java_cube_shading_properties: false,
         cullfaces: false, // Not sure if Vintage Story supports this
@@ -52,5 +56,9 @@ export function create_format(): ModelFormat {
         per_animator_rotation_interpolation: false,
     });
     codecVS.format = format;
+    // Route animation save/load/compile through the VS library codec (AnimationCodec.getCodec
+    // checks Format.animation_codec first), so files use the VS format, not Bedrock's.
+    // vsAnimationCodec is undefined on Blockbench builds without the AnimationCodec API.
+    if (vsAnimationCodec) format.animation_codec = vsAnimationCodec;
     return format;
 };

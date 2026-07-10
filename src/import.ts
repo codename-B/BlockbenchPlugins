@@ -4,6 +4,11 @@ import { import_animations } from "./import_animation";
 import { VS_Shape } from "./vs_shape_def";
 import { VS_PROJECT_PROPS } from "./property";
 import { load_back_drop_shape } from "./util/misc";
+import { reference_to_candidate_paths } from "./animation_library_paths";
+import { vsAnimationCodec } from "./animation_codec";
+
+// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
+const fs = requireNativeModule('fs');
 
 export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
 
@@ -53,8 +58,43 @@ export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
     // Build the model structure using the dedicated module
     import_model(content, asBackdrop, _path);
 
-    // Import animations using the dedicated module
+    // Import inline (shape-embedded) animations.
     if (content.animations) {
         import_animations(content.animations);
+    }
+
+    // Load referenced external animation libraries so they appear grouped by file.
+    if (content.animationLibraries && content.animationLibraries.length > 0) {
+        load_animation_libraries(content.animationLibraries, _path);
+    }
+}
+
+/**
+ * Resolves each `animationLibraries` reference to a file under `assets/<domain>/animations/`,
+ * loads it through the VS animation codec (so its animations group under that file in the
+ * panel), and remembers the original reference string for a diff-stable round trip.
+ * Mirrors the engine's `Shape.ResolveAnimationLibraries()` — warns and skips missing files.
+ */
+function load_animation_libraries(refs: string[], modelPath: string) {
+    if (!vsAnimationCodec) return;
+    for (const ref of refs) {
+        const candidates = reference_to_candidate_paths(ref, modelPath);
+        const filePath = candidates.find(p => fs.existsSync(p));
+        if (!filePath) {
+            console.warn(`[VS Import] Animation library "${ref}" not found. Looked in: ${candidates.join(', ') || '(model is not inside an assets/<domain> tree)'}`);
+            continue;
+        }
+        let fileContent: string;
+        try {
+            fileContent = fs.readFileSync(filePath, 'utf-8');
+        } catch (e) {
+            console.error(`[VS Import] Failed to read animation library ${filePath}:`, e);
+            continue;
+        }
+        const created = vsAnimationCodec.loadFile({ path: filePath, content: fileContent });
+        for (const anim of created) {
+            // @ts-expect-error: custom property for round-trip fidelity
+            anim.vs_library_ref = ref;
+        }
     }
 }

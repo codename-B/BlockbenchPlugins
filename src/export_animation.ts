@@ -17,20 +17,35 @@ function mapInterpolation(bbMode: string | undefined): { mode: VS_KeyFrameInterp
     return { mode: null, isCatmull: false };
 }
 
-// Cubic Bezier handle (value-delta) -> cubic Hermite tangent at the segment's near end.
-// Blockbench stores `bezier_right_value`/`bezier_left_value` as deltas added to the
-// keyframe value when constructing the control point — see
+// Converts one Blockbench bezier handle into the engine's (tangent slope + handle width) pair and
+// writes them onto the keyframe element, per axis. Blockbench stores a handle as a value delta
+// (bezier_*_value) plus a TIME delta in seconds (bezier_*_time) — see
 // https://github.com/JannisX11/blockbench/blob/master/js/animations/keyframe.js (getBezierLerp).
-// Equating cubic Bezier B'(0) = 3*(P1-P0) with cubic Hermite's start-tangent gives
-// `tangent = 3 * delta` at the outgoing end; at the incoming end the same identity
-// applied to B'(1) = 3*(P3-P2) yields `tangent = -3 * delta`. Approximate when the
-// handle's time offset deviates from the canonical 1/3 spacing: tangent direction is
-// preserved but time skew on the handle is not. Adequate for default-shaped handles.
-function outTangentFromDelta(delta: number): number {
-    return 3 * delta;
-}
-function inTangentFromDelta(delta: number): number {
-    return -3 * delta;
+// The engine wants a slope in value-per-segment-t and the handle's horizontal extent in frames:
+//   widthFrames = timeDelta * fps
+//   tangent     = valueDelta * segmentFrames / widthFrames   (= slope-per-frame * segmentFrames)
+// so the actual handle width is honoured rather than assuming the canonical 1/3 spacing. Width is
+// emitted only when it differs from the engine's +/-(segmentFrames/3) default, which keeps
+// default-shaped handles (and files written before width support) free of extra fields and
+// byte-identical on re-export.
+function applyBezierHandle(
+    elem: VS_AnimationKey,
+    valueDeltas: ArrayVector3 | undefined,
+    timeDeltas: ArrayVector3 | undefined,
+    segmentFrames: number,
+    defaultWidthFrames: number,
+    fps: number,
+    tangentFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
+    widthFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
+) {
+    if (!valueDeltas || !timeDeltas || segmentFrames <= 0) return;
+    for (let i = 0; i < 3; i++) {
+        const widthFrames = Number(timeDeltas[i]) * fps;
+        if (widthFrames === 0) continue; // degenerate (zero-width) handle; nothing meaningful to store
+        const tangent = Number(valueDeltas[i]) * segmentFrames / widthFrames;
+        if (tangent !== 0) (elem as any)[tangentFields[i]] = tangent;
+        if (Math.abs(widthFrames - defaultWidthFrames) > 1e-9) (elem as any)[widthFields[i]] = widthFrames;
+    }
 }
 
 // Computes a Catmull-Rom keyframe's Hermite tangent in value-per-segment-t units for both
@@ -102,6 +117,8 @@ interface ChannelFieldNames {
     interp: keyof VS_AnimationKey;
     tangentInX: keyof VS_AnimationKey; tangentInY: keyof VS_AnimationKey; tangentInZ: keyof VS_AnimationKey;
     tangentOutX: keyof VS_AnimationKey; tangentOutY: keyof VS_AnimationKey; tangentOutZ: keyof VS_AnimationKey;
+    tangentInWidthX: keyof VS_AnimationKey; tangentInWidthY: keyof VS_AnimationKey; tangentInWidthZ: keyof VS_AnimationKey;
+    tangentOutWidthX: keyof VS_AnimationKey; tangentOutWidthY: keyof VS_AnimationKey; tangentOutWidthZ: keyof VS_AnimationKey;
 }
 
 const CHANNEL_FIELDS: Record<BBChannel, ChannelFieldNames> = {
@@ -109,43 +126,58 @@ const CHANNEL_FIELDS: Record<BBChannel, ChannelFieldNames> = {
         interp: 'positionInterp',
         tangentInX: 'offsetTangentInX', tangentInY: 'offsetTangentInY', tangentInZ: 'offsetTangentInZ',
         tangentOutX: 'offsetTangentOutX', tangentOutY: 'offsetTangentOutY', tangentOutZ: 'offsetTangentOutZ',
+        tangentInWidthX: 'offsetTangentInWidthX', tangentInWidthY: 'offsetTangentInWidthY', tangentInWidthZ: 'offsetTangentInWidthZ',
+        tangentOutWidthX: 'offsetTangentOutWidthX', tangentOutWidthY: 'offsetTangentOutWidthY', tangentOutWidthZ: 'offsetTangentOutWidthZ',
     },
     rotation: {
         interp: 'rotationInterp',
         tangentInX: 'rotationTangentInX', tangentInY: 'rotationTangentInY', tangentInZ: 'rotationTangentInZ',
         tangentOutX: 'rotationTangentOutX', tangentOutY: 'rotationTangentOutY', tangentOutZ: 'rotationTangentOutZ',
+        tangentInWidthX: 'rotationTangentInWidthX', tangentInWidthY: 'rotationTangentInWidthY', tangentInWidthZ: 'rotationTangentInWidthZ',
+        tangentOutWidthX: 'rotationTangentOutWidthX', tangentOutWidthY: 'rotationTangentOutWidthY', tangentOutWidthZ: 'rotationTangentOutWidthZ',
     },
     scale: {
         interp: 'scaleInterp',
         tangentInX: 'stretchTangentInX', tangentInY: 'stretchTangentInY', tangentInZ: 'stretchTangentInZ',
         tangentOutX: 'stretchTangentOutX', tangentOutY: 'stretchTangentOutY', tangentOutZ: 'stretchTangentOutZ',
+        tangentInWidthX: 'stretchTangentInWidthX', tangentInWidthY: 'stretchTangentInWidthY', tangentInWidthZ: 'stretchTangentInWidthZ',
+        tangentOutWidthX: 'stretchTangentOutWidthX', tangentOutWidthY: 'stretchTangentOutWidthY', tangentOutWidthZ: 'stretchTangentOutWidthZ',
     },
 };
 
-function applyInterpolationToKey(elem: VS_AnimationKey, channel: BBChannel, kf: _Keyframe, _value: { x: number, y: number, z: number }, interp: VS_KeyFrameInterpolation) {
+function applyInterpolationToKey(
+    elem: VS_AnimationKey,
+    channel: BBChannel,
+    kf: _Keyframe,
+    interp: VS_KeyFrameInterpolation,
+    channelKfs: _Keyframe[] | null,
+    idx: number,
+    fps: number,
+) {
     const fields = CHANNEL_FIELDS[channel];
     (elem as any)[fields.interp] = interp;
 
     if (interp !== 'Bezier') return;
 
-    const right = kf.bezier_right_value;
-    if (right) {
-        const tx = outTangentFromDelta(Number(right[0]));
-        const ty = outTangentFromDelta(Number(right[1]));
-        const tz = outTangentFromDelta(Number(right[2]));
-        if (tx !== 0) (elem as any)[fields.tangentOutX] = tx;
-        if (ty !== 0) (elem as any)[fields.tangentOutY] = ty;
-        if (tz !== 0) (elem as any)[fields.tangentOutZ] = tz;
-    }
+    // Handle widths are placed relative to the adjacent segment, so we need the neighbouring
+    // keyframes IN THIS CHANNEL (matching the engine's per-channel keyframe walk).
+    const curFrame = Math.round(kf.time * fps);
+    const prev = channelKfs && idx > 0 ? channelKfs[idx - 1] : null;
+    const next = channelKfs && idx >= 0 && idx < channelKfs.length - 1 ? channelKfs[idx + 1] : null;
+    const outDur = next ? Math.max(0, Math.round(next.time * fps) - curFrame) : 0;
+    const inDur = prev ? Math.max(0, curFrame - Math.round(prev.time * fps)) : 0;
 
-    const left = kf.bezier_left_value;
-    if (left) {
-        const tx = inTangentFromDelta(Number(left[0]));
-        const ty = inTangentFromDelta(Number(left[1]));
-        const tz = inTangentFromDelta(Number(left[2]));
-        if (tx !== 0) (elem as any)[fields.tangentInX] = tx;
-        if (ty !== 0) (elem as any)[fields.tangentInY] = ty;
-        if (tz !== 0) (elem as any)[fields.tangentInZ] = tz;
+    // The OUT handle shapes the segment to the next keyframe; the IN handle the segment from the
+    // previous one. A handle with no adjacent segment affects no curve, so it's skipped.
+    if (outDur > 0) {
+        applyBezierHandle(elem, kf.bezier_right_value, kf.bezier_right_time, outDur, outDur / 3, fps,
+            [fields.tangentOutX, fields.tangentOutY, fields.tangentOutZ],
+            [fields.tangentOutWidthX, fields.tangentOutWidthY, fields.tangentOutWidthZ]);
+    }
+    if (inDur > 0) {
+        applyBezierHandle(elem, kf.bezier_left_value, kf.bezier_left_time, inDur, -inDur / 3, fps,
+            [fields.tangentInX, fields.tangentInY, fields.tangentInZ],
+            [fields.tangentInWidthX, fields.tangentInWidthY, fields.tangentInWidthZ]);
     }
 }
 
@@ -153,173 +185,182 @@ function applyInterpolationToKey(elem: VS_AnimationKey, channel: BBChannel, kf: 
  * Exports Blockbench animations to the Vintage Story animation format.
  * @returns An array of VS animations.
  */
-export function export_animations(): Array<VS_Animation> {
-    const animations: Array<VS_Animation> = [];
+/**
+ * Converts a single Blockbench animation to the Vintage Story animation format.
+ * Returns null when the animation has no exportable keyframes (or for backdrop projects).
+ * When `catmullConverted` is supplied, the animation's name is appended to it if any of its
+ * keyframes were converted from catmull-rom to bezier, so the caller can show one aggregated
+ * notice instead of a popup per animation.
+ */
+export function compile_animation(animation: _Animation, catmullConverted?: string[]): VS_Animation | null {
+    // Don't export animations for backdrop projects.
+    if (is_backdrop_project()) return null;
 
-    // Don't export any animations if project contains backdrops
-    if(is_backdrop_project()) {
-        return [];
-    }
+    const keyframes: Record<number,VS_Keyframe> = {};
+    const fps = util.fps;
+    const baseFrameCount = get_base_frame_quantity(animation);
+    const animators = Object.values(animation.animators || {});
+    let hadCatmullConversion = false;
 
-    // Track animations whose catmull-rom keyframes got converted to bezier, so we can
-    // surface a single informational popup at the end of the export.
-    const animationsWithCatmullConversion: string[] = [];
-
-    (Animation as unknown as typeof _Animation).all.forEach(animation => {
-        const keyframes: Record<number,VS_Keyframe> = {};
-        const fps = util.fps;
-        const baseFrameCount = get_base_frame_quantity(animation);
-        const animators = Object.values(animation.animators || {});
-        let hadCatmullConversion = false;
-
-        animators.forEach(animator => {
-            if (animator.type === 'bone' && animator.keyframes && animator.keyframes.length > 0) {
-                // Skip NullObject animators (IK controllers) — they don't exist as VS elements
-                if (typeof NullObject !== 'undefined' && NullObject.all?.some((n: any) => n.uuid === animator.uuid)) {
-                    return;
-                }
-                const bone_name = animator.name;
-
-                // Catmull-Rom -> Bezier conversion needs the prev/next keyframes in the SAME
-                // channel (matching the engine's per-channel keyframe walk). Pre-sort once.
-                const byChannel: Record<BBChannel, _Keyframe[]> = { position: [], rotation: [], scale: [] };
-                animator.keyframes.forEach(kf => {
-                    if (kf.channel === 'position' || kf.channel === 'rotation' || kf.channel === 'scale') {
-                        byChannel[kf.channel].push(kf);
-                    }
-                });
-                (Object.keys(byChannel) as BBChannel[]).forEach(ch => byChannel[ch].sort((a, b) => a.time - b.time));
-
-                animator.keyframes.forEach(kf => {
-                    const { mode: vsInterp, isCatmull } = mapInterpolation(kf.interpolation);
-                    if (isCatmull) hadCatmullConversion = true;
-
-                    const frame = Math.round(kf.time * fps);
-                    keyframes[frame] = keyframes[frame] || { frame, elements: {} };
-                    keyframes[frame].elements[bone_name] = keyframes[frame].elements[bone_name] || {};
-                    const elem = keyframes[frame].elements[bone_name];
-
-                    const dataPoint = kf.data_points[0];
-                    const value = { x: Number(dataPoint.x), y: Number(dataPoint.y), z: Number(dataPoint.z) };
-                    const channel = kf.channel as BBChannel;
-                    const channelKfs = channel in byChannel ? byChannel[channel] : null;
-
-                    const applyInterp = () => {
-                        if (!vsInterp) return;
-                        if (isCatmull && channelKfs) {
-                            applyCatmullRomToKey(elem, channel, channelKfs, channelKfs.indexOf(kf), fps);
-                        } else {
-                            applyInterpolationToKey(elem, channel, kf, value, vsInterp);
-                        }
-                    };
-
-                    switch (kf.channel) {
-                        case 'rotation':
-                            elem.rotationX = value.x;
-                            elem.rotationY = value.y;
-                            elem.rotationZ = value.z;
-                            applyInterp();
-                            break;
-                        case 'position':
-                            elem.offsetX = value.x;
-                            elem.offsetY = value.y;
-                            elem.offsetZ = value.z;
-                            applyInterp();
-                            break;
-                        case 'scale':
-                            if (value.x !== 1) elem.stretchX = value.x;
-                            if (value.y !== 1) elem.stretchY = value.y;
-                            if (value.z !== 1) elem.stretchZ = value.z;
-                            applyInterp();
-                            break;
-                    }
-                });
+    animators.forEach(animator => {
+        if (animator.type === 'bone' && animator.keyframes && animator.keyframes.length > 0) {
+            // Skip NullObject animators (IK controllers) — they don't exist as VS elements
+            if (typeof NullObject !== 'undefined' && NullObject.all?.some((n: any) => n.uuid === animator.uuid)) {
+                return;
             }
+            const bone_name = animator.name;
 
-            // Process effect animators for texture swap keyframes
-            if (animator.type === 'effect' && animator.keyframes && animator.keyframes.length > 0) {
-                animator.keyframes.forEach(kf => {
-                    if (kf.channel === 'timeline') {
-                        const script = kf.data_points[0]?.script;
-                        if (script) {
-                            const textures = parseTextureSwapScript(script);
-                            if (textures) {
-                                const frame = Math.round(kf.time * fps);
-                                keyframes[frame] = keyframes[frame] || { frame, elements: {} };
-                                keyframes[frame].textures = textures;
-                            }
+            // Catmull-Rom -> Bezier conversion needs the prev/next keyframes in the SAME
+            // channel (matching the engine's per-channel keyframe walk). Pre-sort once.
+            const byChannel: Record<BBChannel, _Keyframe[]> = { position: [], rotation: [], scale: [] };
+            animator.keyframes.forEach(kf => {
+                if (kf.channel === 'position' || kf.channel === 'rotation' || kf.channel === 'scale') {
+                    byChannel[kf.channel].push(kf);
+                }
+            });
+            (Object.keys(byChannel) as BBChannel[]).forEach(ch => byChannel[ch].sort((a, b) => a.time - b.time));
+
+            animator.keyframes.forEach(kf => {
+                const { mode: vsInterp, isCatmull } = mapInterpolation(kf.interpolation);
+                if (isCatmull) hadCatmullConversion = true;
+
+                const frame = Math.round(kf.time * fps);
+                keyframes[frame] = keyframes[frame] || { frame, elements: {} };
+                keyframes[frame].elements[bone_name] = keyframes[frame].elements[bone_name] || {};
+                const elem = keyframes[frame].elements[bone_name];
+
+                const dataPoint = kf.data_points[0];
+                const value = { x: Number(dataPoint.x), y: Number(dataPoint.y), z: Number(dataPoint.z) };
+                const channel = kf.channel as BBChannel;
+                const channelKfs = channel in byChannel ? byChannel[channel] : null;
+
+                const applyInterp = () => {
+                    if (!vsInterp) return;
+                    const idx = channelKfs ? channelKfs.indexOf(kf) : -1;
+                    if (isCatmull && channelKfs) {
+                        applyCatmullRomToKey(elem, channel, channelKfs, idx, fps);
+                    } else {
+                        applyInterpolationToKey(elem, channel, kf, vsInterp, channelKfs, idx, fps);
+                    }
+                };
+
+                switch (kf.channel) {
+                    case 'rotation':
+                        elem.rotationX = value.x;
+                        elem.rotationY = value.y;
+                        elem.rotationZ = value.z;
+                        applyInterp();
+                        break;
+                    case 'position':
+                        elem.offsetX = value.x;
+                        elem.offsetY = value.y;
+                        elem.offsetZ = value.z;
+                        applyInterp();
+                        break;
+                    case 'scale':
+                        elem.stretchX = value.x;
+                        elem.stretchY = value.y;
+                        elem.stretchZ = value.z;
+                        applyInterp();
+                        break;
+                }
+            });
+        }
+
+        // Process effect animators for texture swap keyframes
+        if (animator.type === 'effect' && animator.keyframes && animator.keyframes.length > 0) {
+            animator.keyframes.forEach(kf => {
+                if (kf.channel === 'timeline') {
+                    const script = kf.data_points[0]?.script;
+                    if (script) {
+                        const textures = parseTextureSwapScript(script);
+                        if (textures) {
+                            const frame = Math.round(kf.time * fps);
+                            keyframes[frame] = keyframes[frame] || { frame, elements: {} };
+                            keyframes[frame].textures = textures;
                         }
                     }
-                });
-            }
-        });
-
-        normalize_terminal_keyframe(keyframes, baseFrameCount);
-
-        // Wraps all animation elements into oneLiner wrappers (after all animators are processed)
-        for(const keyframe of Object.values(keyframes)) {
-            const wrapped_elements = {};
-            for (const [element, content] of Object.entries(keyframe.elements)) {
-                wrapped_elements[element] = new oneLiner(content);
-            }
-            keyframe.elements = wrapped_elements;
-        }
-
-        // Use preserved VS values if available, otherwise compute defaults
-        // @ts-expect-error: custom property from import
-        const storedCode = animation.vs_code;
-        // @ts-expect-error: custom property from import
-        const storedOnActivityStopped = animation.vs_onActivityStopped;
-        // @ts-expect-error: custom property from import
-        const storedOnAnimationEnd = animation.vs_onAnimationEnd;
-
-        const vsAnimation : VS_Animation = {
-            name: animation.name,
-            code: storedCode || animation.name.toLowerCase().replace(/ /g, ''),
-            quantityframes: get_frame_quantity(animation, keyframes),
-            onActivityStopped: storedOnActivityStopped || "EaseOut",
-            onAnimationEnd: storedOnAnimationEnd || (animation.loop === 'loop' ? "Repeat" : "Hold"),
-            keyframes: Object.values(keyframes).sort((a, b) => a.frame - b.frame)
-        };
-        
-        if (vsAnimation.quantityframes === 0 && vsAnimation.keyframes.length > 0) {
-            const frame0 = vsAnimation.keyframes.find(kf => kf.frame === 0);
-            if (frame0) {
-                const frame1 = JSON.parse(JSON.stringify(frame0));
-                frame1.frame = 1;
-                vsAnimation.keyframes.push(frame1);
-                vsAnimation.quantityframes = 1;
-            }
-        }
-
-        // For looping animations, insert a virtual end frame copying frame 0
-        // so VS can interpolate back to the start. QuantityFrames is a frame count,
-        // so the last valid frame is quantityframes - 1.
-        if (vsAnimation.onAnimationEnd === "Repeat" && vsAnimation.quantityframes > 0) {
-            const lastFrame = vsAnimation.quantityframes - 1;
-            const hasLastFrame = vsAnimation.keyframes.some(kf => kf.frame === lastFrame);
-            if (!hasLastFrame) {
-                const frame0 = vsAnimation.keyframes.find(kf => kf.frame === 0);
-                if (frame0) {
-                    const virtualFrame = JSON.parse(JSON.stringify(frame0));
-                    virtualFrame.frame = lastFrame;
-                    vsAnimation.keyframes.push(virtualFrame);
-                    vsAnimation.keyframes.sort((a, b) => a.frame - b.frame);
                 }
-            }
-        }
-
-        if (vsAnimation.keyframes.length > 0) {
-            animations.push(vsAnimation);
-            if (hadCatmullConversion) animationsWithCatmullConversion.push(animation.name);
+            });
         }
     });
 
-    if (animationsWithCatmullConversion.length > 0) {
-        display_catmull_conversion_notice(animationsWithCatmullConversion);
+    normalize_terminal_keyframe(keyframes, baseFrameCount);
+
+    // Wraps all animation elements into oneLiner wrappers (after all animators are processed)
+    for(const keyframe of Object.values(keyframes)) {
+        const wrapped_elements = {};
+        for (const [element, content] of Object.entries(keyframe.elements)) {
+            wrapped_elements[element] = new oneLiner(content);
+        }
+        keyframe.elements = wrapped_elements;
     }
 
-    return animations;
+    // Use preserved VS values if available, otherwise compute defaults
+    // @ts-expect-error: custom property from import
+    const storedCode = animation.vs_code;
+    // @ts-expect-error: custom property from import
+    const storedOnActivityStopped = animation.vs_onActivityStopped;
+    // @ts-expect-error: custom property from import
+    const storedOnAnimationEnd = animation.vs_onAnimationEnd;
+
+    const vsAnimation : VS_Animation = {
+        name: animation.name,
+        code: storedCode || animation.name.toLowerCase().replace(/ /g, ''),
+        quantityframes: get_frame_quantity(animation, keyframes),
+        onActivityStopped: storedOnActivityStopped || "EaseOut",
+        onAnimationEnd: storedOnAnimationEnd || (animation.loop === 'loop' ? "Repeat" : "Hold"),
+        keyframes: Object.values(keyframes).sort((a, b) => a.frame - b.frame)
+    };
+
+    if (vsAnimation.quantityframes === 0 && vsAnimation.keyframes.length > 0) {
+        const frame0 = vsAnimation.keyframes.find(kf => kf.frame === 0);
+        if (frame0) {
+            const frame1 = JSON.parse(JSON.stringify(frame0));
+            frame1.frame = 1;
+            vsAnimation.keyframes.push(frame1);
+            vsAnimation.quantityframes = 1;
+        }
+    }
+
+    // For looping animations, insert a virtual end frame copying frame 0
+    // so VS can interpolate back to the start. QuantityFrames is a frame count,
+    // so the last valid frame is quantityframes - 1.
+    if (vsAnimation.onAnimationEnd === "Repeat" && vsAnimation.quantityframes > 0) {
+        const lastFrame = vsAnimation.quantityframes - 1;
+        const hasLastFrame = vsAnimation.keyframes.some(kf => kf.frame === lastFrame);
+        if (!hasLastFrame) {
+            const frame0 = vsAnimation.keyframes.find(kf => kf.frame === 0);
+            if (frame0) {
+                const virtualFrame = JSON.parse(JSON.stringify(frame0));
+                virtualFrame.frame = lastFrame;
+                vsAnimation.keyframes.push(virtualFrame);
+                vsAnimation.keyframes.sort((a, b) => a.frame - b.frame);
+            }
+        }
+    }
+
+    if (vsAnimation.keyframes.length === 0) return null;
+    if (hadCatmullConversion && catmullConverted) catmullConverted.push(animation.name);
+    return vsAnimation;
+}
+
+/**
+ * Compiles the given Blockbench animations into a VS animation library structure
+ * (`{ code?, name?, animations[] }`) — the on-disk format for a standalone animation
+ * library file consumed by the engine's `Shape.AnimationLibraries` references.
+ */
+export function compile_animation_library(animations: _Animation[], code?: string, name?: string): VS_AnimationLibrary {
+    const catmullConverted: string[] = [];
+    const compiled = animations
+        .map(a => compile_animation(a, catmullConverted))
+        .filter((a): a is VS_Animation => a !== null);
+    if (catmullConverted.length > 0) display_catmull_conversion_notice(catmullConverted);
+
+    const library: VS_AnimationLibrary = { animations: compiled };
+    if (code) library.code = code;
+    if (name) library.name = name;
+    return library;
 }
 
 /**
@@ -431,18 +472,6 @@ function display_animation_length_warning(animation_name: string) {
             `This may not animate correctly in Vintage Story. ` +
             `Consider moving the keyframes away from the last frame if you experience issues.`
     });
-}
-
-/**
- * Wraps {@link export_animations} output in a VS_AnimationLibrary structure suitable for
- * writing to a standalone animation library JSON file (the format consumed by the engine's
- * `Shape.AnimationLibraries` references).
- */
-export function export_animation_library(code?: string, name?: string): VS_AnimationLibrary {
-    const library: VS_AnimationLibrary = { animations: export_animations() };
-    if (code) library.code = code;
-    if (name) library.name = name;
-    return library;
 }
 
 function display_catmull_conversion_notice(animation_names: string[]) {

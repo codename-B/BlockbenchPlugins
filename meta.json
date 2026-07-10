@@ -1,0 +1,3332 @@
+{
+  "inputs": {
+    "package.json": {
+      "bytes": 1458,
+      "imports": []
+    },
+    "src/util/subscribable.ts": {
+      "bytes": 1335,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/util/events.ts": {
+      "bytes": 2981,
+      "imports": [
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../package.json"
+        },
+        {
+          "path": "src/util/subscribable.ts",
+          "kind": "import-statement",
+          "original": "./subscribable"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/util/moddingTools.ts": {
+      "bytes": 11839,
+      "imports": [
+        {
+          "path": "src/util/events.ts",
+          "kind": "import-statement",
+          "original": "./events"
+        },
+        {
+          "path": "src/util/subscribable.ts",
+          "kind": "import-statement",
+          "original": "./subscribable"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/util.ts": {
+      "bytes": 2414,
+      "imports": [
+        {
+          "path": "fs",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "path",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/json5/lib/unicode.js": {
+      "bytes": 15815,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/json5/lib/util.js": {
+      "bytes": 885,
+      "imports": [
+        {
+          "path": "node_modules/json5/lib/unicode.js",
+          "kind": "require-call",
+          "original": "../lib/unicode"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/json5/lib/parse.js": {
+      "bytes": 22402,
+      "imports": [
+        {
+          "path": "node_modules/json5/lib/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/json5/lib/stringify.js": {
+      "bytes": 6983,
+      "imports": [
+        {
+          "path": "node_modules/json5/lib/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/json5/lib/index.js": {
+      "bytes": 143,
+      "imports": [
+        {
+          "path": "node_modules/json5/lib/parse.js",
+          "kind": "require-call",
+          "original": "./parse"
+        },
+        {
+          "path": "node_modules/json5/lib/stringify.js",
+          "kind": "require-call",
+          "original": "./stringify"
+        }
+      ],
+      "format": "cjs"
+    },
+    "src/debug_actions.ts": {
+      "bytes": 11202,
+      "imports": [
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "./util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../package.json"
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/json5/lib/index.js",
+          "kind": "import-statement",
+          "original": "json5"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments/presets.ts": {
+      "bytes": 4998,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/property.ts": {
+      "bytes": 10118,
+      "imports": [
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "require-call",
+          "original": "./attachments/presets"
+        },
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "require-call",
+          "original": "./attachments/presets"
+        },
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "require-call",
+          "original": "./attachments/presets"
+        },
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "require-call",
+          "original": "./attachments/presets"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/import_model/locator.ts": {
+      "bytes": 1676,
+      "imports": [
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/import_model/group.ts": {
+      "bytes": 4113,
+      "imports": [
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        },
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "../property"
+        },
+        {
+          "path": "src/import_model/locator.ts",
+          "kind": "import-statement",
+          "original": "./locator"
+        },
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "import-statement",
+          "original": "../attachments/presets"
+        },
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "require-call",
+          "original": "../attachments/presets"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/vs_shape_def.ts": {
+      "bytes": 3597,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/import_model/cube/faces.ts": {
+      "bytes": 1688,
+      "imports": [
+        {
+          "path": "src/vs_shape_def.ts",
+          "kind": "import-statement",
+          "original": "../../vs_shape_def"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/import_model/cube/factory.ts": {
+      "bytes": 1863,
+      "imports": [
+        {
+          "path": "../../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../../util"
+        },
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "../../property"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/import_model/cube.ts": {
+      "bytes": 1665,
+      "imports": [
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "../property"
+        },
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/import_model/cube/faces.ts",
+          "kind": "import-statement",
+          "original": "./cube/faces"
+        },
+        {
+          "path": "src/import_model/cube/factory.ts",
+          "kind": "import-statement",
+          "original": "./cube/factory"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/util/element_tree.ts": {
+      "bytes": 1996,
+      "imports": [
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/transform.ts": {
+      "bytes": 3982,
+      "imports": [
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "./util"
+        },
+        {
+          "path": "src/util/element_tree.ts",
+          "kind": "import-statement",
+          "original": "./util/element_tree"
+        },
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/import_model/traverse.ts": {
+      "bytes": 2381,
+      "imports": [
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/import_model/group.ts",
+          "kind": "import-statement",
+          "original": "./group"
+        },
+        {
+          "path": "src/import_model/cube.ts",
+          "kind": "import-statement",
+          "original": "./cube"
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        },
+        {
+          "path": "src/transform.ts",
+          "kind": "import-statement",
+          "original": "../transform"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/import_model.ts": {
+      "bytes": 976,
+      "imports": [
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/import_model/traverse.ts",
+          "kind": "import-statement",
+          "original": "./import_model/traverse"
+        },
+        {
+          "path": "src/transform.ts",
+          "kind": "import-statement",
+          "original": "./transform"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/import_animation.ts": {
+      "bytes": 3136,
+      "imports": [
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "./util"
+        },
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/util/misc.ts": {
+      "bytes": 1208,
+      "imports": [
+        {
+          "path": "src/import.ts",
+          "kind": "import-statement",
+          "original": "../import"
+        },
+        {
+          "path": "node_modules/json5/lib/index.js",
+          "kind": "import-statement",
+          "original": "json5"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/import.ts": {
+      "bytes": 2083,
+      "imports": [
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "./util"
+        },
+        {
+          "path": "src/import_model.ts",
+          "kind": "import-statement",
+          "original": "./import_model"
+        },
+        {
+          "path": "src/import_animation.ts",
+          "kind": "import-statement",
+          "original": "./import_animation"
+        },
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "./property"
+        },
+        {
+          "path": "src/util/misc.ts",
+          "kind": "import-statement",
+          "original": "./util/misc"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_model/cube/faces.ts": {
+      "bytes": 3790,
+      "imports": [
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "../../property"
+        },
+        {
+          "path": "src/vs_shape_def.ts",
+          "kind": "import-statement",
+          "original": "../../vs_shape_def"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_model/cube/factory.ts": {
+      "bytes": 2168,
+      "imports": [
+        {
+          "path": "../../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../../util"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_model/cube.ts": {
+      "bytes": 2043,
+      "imports": [
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "../property"
+        },
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/export_model/cube/faces.ts",
+          "kind": "import-statement",
+          "original": "./cube/faces"
+        },
+        {
+          "path": "src/export_model/cube/factory.ts",
+          "kind": "import-statement",
+          "original": "./cube/factory"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_model/locator.ts": {
+      "bytes": 1950,
+      "imports": [
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_model/group.ts": {
+      "bytes": 10839,
+      "imports": [
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/export_model/traverse.ts",
+          "kind": "import-statement",
+          "original": "./traverse"
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        },
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "../property"
+        },
+        {
+          "path": "src/export_model/locator.ts",
+          "kind": "import-statement",
+          "original": "./locator"
+        },
+        {
+          "path": "src/export_model/cube/faces.ts",
+          "kind": "import-statement",
+          "original": "./cube/faces"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_model/traverse.ts": {
+      "bytes": 2626,
+      "imports": [
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/export_model/cube.ts",
+          "kind": "import-statement",
+          "original": "./cube"
+        },
+        {
+          "path": "src/export_model/group.ts",
+          "kind": "import-statement",
+          "original": "./group"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_model.ts": {
+      "bytes": 826,
+      "imports": [
+        {
+          "path": "src/export_model/traverse.ts",
+          "kind": "import-statement",
+          "original": "./export_model/traverse"
+        },
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_animation.ts": {
+      "bytes": 8336,
+      "imports": [
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "./util"
+        },
+        {
+          "path": "src/util/misc.ts",
+          "kind": "import-statement",
+          "original": "./util/misc"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export_textures.ts": {
+      "bytes": 5256,
+      "imports": [
+        {
+          "path": "src/util/element_tree.ts",
+          "kind": "import-statement",
+          "original": "./util/element_tree"
+        },
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/export.ts": {
+      "bytes": 6581,
+      "imports": [
+        {
+          "path": "src/export_model.ts",
+          "kind": "import-statement",
+          "original": "./export_model"
+        },
+        {
+          "path": "src/export_animation.ts",
+          "kind": "import-statement",
+          "original": "./export_animation"
+        },
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "./property"
+        },
+        {
+          "path": "src/export_textures.ts",
+          "kind": "import-statement",
+          "original": "./export_textures"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/actions.ts": {
+      "bytes": 3354,
+      "imports": [
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "./util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../package.json"
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "./util"
+        },
+        {
+          "path": "src/import.ts",
+          "kind": "import-statement",
+          "original": "./import"
+        },
+        {
+          "path": "src/util/misc.ts",
+          "kind": "import-statement",
+          "original": "./util/misc"
+        },
+        {
+          "path": "./codec",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/export.ts",
+          "kind": "import-statement",
+          "original": "./export"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/ik/constraint_visualizer.ts": {
+      "bytes": 10889,
+      "imports": [
+        {
+          "path": "./types",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/ik/chain_utils.ts": {
+      "bytes": 2966,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/mods/ik/constraints.ts": {
+      "bytes": 20014,
+      "imports": [
+        {
+          "path": "../../../package.json",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "./types",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/mods/ik/constraint_visualizer.ts",
+          "kind": "import-statement",
+          "original": "./constraint_visualizer"
+        },
+        {
+          "path": "src/mods/ik/chain_utils.ts",
+          "kind": "import-statement",
+          "original": "./chain_utils"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/ik/math.ts": {
+      "bytes": 3317,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/mods/ik/utils.ts": {
+      "bytes": 3063,
+      "imports": [
+        {
+          "path": "src/mods/ik/math.ts",
+          "kind": "import-statement",
+          "original": "./math"
+        },
+        {
+          "path": "src/mods/ik/chain_utils.ts",
+          "kind": "import-statement",
+          "original": "./chain_utils"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/ik/baking.ts": {
+      "bytes": 15750,
+      "imports": [
+        {
+          "path": "src/mods/ik/chain_utils.ts",
+          "kind": "import-statement",
+          "original": "./chain_utils"
+        },
+        {
+          "path": "src/mods/ik/constraints.ts",
+          "kind": "import-statement",
+          "original": "./constraints"
+        },
+        {
+          "path": "./types",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/mods/ik/utils.ts",
+          "kind": "import-statement",
+          "original": "./utils"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/boneAnimatorMod.ts": {
+      "bytes": 10452,
+      "imports": [
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "../util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../package.json"
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        },
+        {
+          "path": "src/mods/ik/constraints.ts",
+          "kind": "import-statement",
+          "original": "./ik/constraints"
+        },
+        {
+          "path": "src/mods/ik/chain_utils.ts",
+          "kind": "import-statement",
+          "original": "./ik/chain_utils"
+        },
+        {
+          "path": "src/mods/ik/utils.ts",
+          "kind": "import-statement",
+          "original": "./ik/utils"
+        },
+        {
+          "path": "src/mods/ik/baking.ts",
+          "kind": "import-statement",
+          "original": "./ik/baking"
+        },
+        {
+          "path": "./ik/types",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/generated/vs_shape_schema.js": {
+      "bytes": 9120,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/ajv/dist/compile/codegen/code.js": {
+      "bytes": 4676,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/codegen/scope.js": {
+      "bytes": 5198,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/code.js",
+          "kind": "require-call",
+          "original": "./code"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/codegen/index.js": {
+      "bytes": 23127,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/code.js",
+          "kind": "require-call",
+          "original": "./code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/scope.js",
+          "kind": "require-call",
+          "original": "./scope"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/code.js",
+          "kind": "require-call",
+          "original": "./code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/scope.js",
+          "kind": "require-call",
+          "original": "./scope"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/util.js": {
+      "bytes": 7103,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "./codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/code.js",
+          "kind": "require-call",
+          "original": "./codegen/code"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/names.js": {
+      "bytes": 1440,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "./codegen"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/errors.js": {
+      "bytes": 5771,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "./codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/names.js",
+          "kind": "require-call",
+          "original": "./names"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/validate/boolSchema.js": {
+      "bytes": 1531,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/errors.js",
+          "kind": "require-call",
+          "original": "../errors"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/names.js",
+          "kind": "require-call",
+          "original": "../names"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/rules.js": {
+      "bytes": 918,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/validate/applicability.js": {
+      "bytes": 853,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/validate/dataType.js": {
+      "bytes": 8409,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/rules.js",
+          "kind": "require-call",
+          "original": "../rules"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/applicability.js",
+          "kind": "require-call",
+          "original": "./applicability"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/errors.js",
+          "kind": "require-call",
+          "original": "../errors"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/validate/defaults.js": {
+      "bytes": 1448,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/code.js": {
+      "bytes": 6216,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/names.js",
+          "kind": "require-call",
+          "original": "../compile/names"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/validate/keyword.js": {
+      "bytes": 5695,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/names.js",
+          "kind": "require-call",
+          "original": "../names"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../../vocabularies/code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/errors.js",
+          "kind": "require-call",
+          "original": "../errors"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/validate/subschema.js": {
+      "bytes": 3858,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/fast-deep-equal/index.js": {
+      "bytes": 1177,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/json-schema-traverse/index.js": {
+      "bytes": 2428,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/resolve.js": {
+      "bytes": 5006,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/fast-deep-equal/index.js",
+          "kind": "require-call",
+          "original": "fast-deep-equal"
+        },
+        {
+          "path": "node_modules/json-schema-traverse/index.js",
+          "kind": "require-call",
+          "original": "json-schema-traverse"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/validate/index.js": {
+      "bytes": 20552,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/validate/boolSchema.js",
+          "kind": "require-call",
+          "original": "./boolSchema"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/dataType.js",
+          "kind": "require-call",
+          "original": "./dataType"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/applicability.js",
+          "kind": "require-call",
+          "original": "./applicability"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/dataType.js",
+          "kind": "require-call",
+          "original": "./dataType"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/defaults.js",
+          "kind": "require-call",
+          "original": "./defaults"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/keyword.js",
+          "kind": "require-call",
+          "original": "./keyword"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/subschema.js",
+          "kind": "require-call",
+          "original": "./subschema"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/names.js",
+          "kind": "require-call",
+          "original": "../names"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/resolve.js",
+          "kind": "require-call",
+          "original": "../resolve"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../util"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/errors.js",
+          "kind": "require-call",
+          "original": "../errors"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/runtime/validation_error.js": {
+      "bytes": 337,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/ref_error.js": {
+      "bytes": 543,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/resolve.js",
+          "kind": "require-call",
+          "original": "./resolve"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/compile/index.js": {
+      "bytes": 10046,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "./codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/runtime/validation_error.js",
+          "kind": "require-call",
+          "original": "../runtime/validation_error"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/names.js",
+          "kind": "require-call",
+          "original": "./names"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/resolve.js",
+          "kind": "require-call",
+          "original": "./resolve"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/index.js",
+          "kind": "require-call",
+          "original": "./validate"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/refs/data.json": {
+      "bytes": 409,
+      "imports": []
+    },
+    "node_modules/fast-uri/lib/scopedChars.js": {
+      "bytes": 245,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/fast-uri/lib/utils.js": {
+      "bytes": 5823,
+      "imports": [
+        {
+          "path": "node_modules/fast-uri/lib/scopedChars.js",
+          "kind": "require-call",
+          "original": "./scopedChars"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/fast-uri/lib/schemes.js": {
+      "bytes": 4716,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/fast-uri/index.js": {
+      "bytes": 9523,
+      "imports": [
+        {
+          "path": "node_modules/fast-uri/lib/utils.js",
+          "kind": "require-call",
+          "original": "./lib/utils"
+        },
+        {
+          "path": "node_modules/fast-uri/lib/schemes.js",
+          "kind": "require-call",
+          "original": "./lib/schemes"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/runtime/uri.js": {
+      "bytes": 218,
+      "imports": [
+        {
+          "path": "node_modules/fast-uri/index.js",
+          "kind": "require-call",
+          "original": "fast-uri"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/core.js": {
+      "bytes": 25185,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/validate/index.js",
+          "kind": "require-call",
+          "original": "./compile/validate"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "./compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/runtime/validation_error.js",
+          "kind": "require-call",
+          "original": "./runtime/validation_error"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/ref_error.js",
+          "kind": "require-call",
+          "original": "./compile/ref_error"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/rules.js",
+          "kind": "require-call",
+          "original": "./compile/rules"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/index.js",
+          "kind": "require-call",
+          "original": "./compile"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "./compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/resolve.js",
+          "kind": "require-call",
+          "original": "./compile/resolve"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/dataType.js",
+          "kind": "require-call",
+          "original": "./compile/validate/dataType"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "./compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/refs/data.json",
+          "kind": "require-call",
+          "original": "./refs/data.json"
+        },
+        {
+          "path": "node_modules/ajv/dist/runtime/uri.js",
+          "kind": "require-call",
+          "original": "./runtime/uri"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/core/id.js": {
+      "bytes": 267,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/core/ref.js": {
+      "bytes": 5234,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/ref_error.js",
+          "kind": "require-call",
+          "original": "../../compile/ref_error"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/names.js",
+          "kind": "require-call",
+          "original": "../../compile/names"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/index.js",
+          "kind": "require-call",
+          "original": "../../compile"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/core/index.js": {
+      "bytes": 357,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/core/id.js",
+          "kind": "require-call",
+          "original": "./id"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/core/ref.js",
+          "kind": "require-call",
+          "original": "./ref"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/limitNumber.js": {
+      "bytes": 1036,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/multipleOf.js": {
+      "bytes": 1023,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/runtime/ucs2length.js": {
+      "bytes": 808,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/limitLength.js": {
+      "bytes": 1130,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/runtime/ucs2length.js",
+          "kind": "require-call",
+          "original": "../../runtime/ucs2length"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/pattern.js": {
+      "bytes": 905,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/limitProperties.js": {
+      "bytes": 896,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/required.js": {
+      "bytes": 3188,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/limitItems.js": {
+      "bytes": 852,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/runtime/equal.js": {
+      "bytes": 286,
+      "imports": [
+        {
+          "path": "node_modules/fast-deep-equal/index.js",
+          "kind": "require-call",
+          "original": "fast-deep-equal"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/uniqueItems.js": {
+      "bytes": 3037,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/validate/dataType.js",
+          "kind": "require-call",
+          "original": "../../compile/validate/dataType"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/runtime/equal.js",
+          "kind": "require-call",
+          "original": "../../runtime/equal"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/const.js": {
+      "bytes": 852,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/runtime/equal.js",
+          "kind": "require-call",
+          "original": "../../runtime/equal"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/enum.js": {
+      "bytes": 1901,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/runtime/equal.js",
+          "kind": "require-call",
+          "original": "../../runtime/equal"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/validation/index.js": {
+      "bytes": 1036,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/limitNumber.js",
+          "kind": "require-call",
+          "original": "./limitNumber"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/multipleOf.js",
+          "kind": "require-call",
+          "original": "./multipleOf"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/limitLength.js",
+          "kind": "require-call",
+          "original": "./limitLength"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/pattern.js",
+          "kind": "require-call",
+          "original": "./pattern"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/limitProperties.js",
+          "kind": "require-call",
+          "original": "./limitProperties"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/required.js",
+          "kind": "require-call",
+          "original": "./required"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/limitItems.js",
+          "kind": "require-call",
+          "original": "./limitItems"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/uniqueItems.js",
+          "kind": "require-call",
+          "original": "./uniqueItems"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/const.js",
+          "kind": "require-call",
+          "original": "./const"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/enum.js",
+          "kind": "require-call",
+          "original": "./enum"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/additionalItems.js": {
+      "bytes": 1931,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/items.js": {
+      "bytes": 1993,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/prefixItems.js": {
+      "bytes": 354,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/items.js",
+          "kind": "require-call",
+          "original": "./items"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/items2020.js": {
+      "bytes": 1037,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/additionalItems.js",
+          "kind": "require-call",
+          "original": "./additionalItems"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/contains.js": {
+      "bytes": 3680,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/dependencies.js": {
+      "bytes": 3198,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/propertyNames.js": {
+      "bytes": 1221,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js": {
+      "bytes": 4309,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/names.js",
+          "kind": "require-call",
+          "original": "../../compile/names"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/properties.js": {
+      "bytes": 2153,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/validate/index.js",
+          "kind": "require-call",
+          "original": "../../compile/validate"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js",
+          "kind": "require-call",
+          "original": "./additionalProperties"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/patternProperties.js": {
+      "bytes": 3236,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/not.js": {
+      "bytes": 773,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/anyOf.js": {
+      "bytes": 343,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/code.js",
+          "kind": "require-call",
+          "original": "../code"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/oneOf.js": {
+      "bytes": 2257,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/allOf.js": {
+      "bytes": 756,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/if.js": {
+      "bytes": 2438,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/thenElse.js": {
+      "bytes": 446,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/applicator/index.js": {
+      "bytes": 1529,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/additionalItems.js",
+          "kind": "require-call",
+          "original": "./additionalItems"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/prefixItems.js",
+          "kind": "require-call",
+          "original": "./prefixItems"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/items.js",
+          "kind": "require-call",
+          "original": "./items"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/items2020.js",
+          "kind": "require-call",
+          "original": "./items2020"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/contains.js",
+          "kind": "require-call",
+          "original": "./contains"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/dependencies.js",
+          "kind": "require-call",
+          "original": "./dependencies"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/propertyNames.js",
+          "kind": "require-call",
+          "original": "./propertyNames"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js",
+          "kind": "require-call",
+          "original": "./additionalProperties"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/properties.js",
+          "kind": "require-call",
+          "original": "./properties"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/patternProperties.js",
+          "kind": "require-call",
+          "original": "./patternProperties"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/not.js",
+          "kind": "require-call",
+          "original": "./not"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/anyOf.js",
+          "kind": "require-call",
+          "original": "./anyOf"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/oneOf.js",
+          "kind": "require-call",
+          "original": "./oneOf"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/allOf.js",
+          "kind": "require-call",
+          "original": "./allOf"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/if.js",
+          "kind": "require-call",
+          "original": "./if"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/thenElse.js",
+          "kind": "require-call",
+          "original": "./thenElse"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/format/format.js": {
+      "bytes": 4317,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/format/index.js": {
+      "bytes": 209,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/format/format.js",
+          "kind": "require-call",
+          "original": "./format"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/metadata.js": {
+      "bytes": 427,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/draft7.js": {
+      "bytes": 557,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/vocabularies/core/index.js",
+          "kind": "require-call",
+          "original": "./core"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/validation/index.js",
+          "kind": "require-call",
+          "original": "./validation"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/applicator/index.js",
+          "kind": "require-call",
+          "original": "./applicator"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/format/index.js",
+          "kind": "require-call",
+          "original": "./format"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/metadata.js",
+          "kind": "require-call",
+          "original": "./metadata"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/discriminator/types.js": {
+      "bytes": 308,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/vocabularies/discriminator/index.js": {
+      "bytes": 4845,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "../../compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/discriminator/types.js",
+          "kind": "require-call",
+          "original": "../discriminator/types"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/index.js",
+          "kind": "require-call",
+          "original": "../../compile"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/ref_error.js",
+          "kind": "require-call",
+          "original": "../../compile/ref_error"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/util.js",
+          "kind": "require-call",
+          "original": "../../compile/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/ajv/dist/refs/json-schema-draft-07.json": {
+      "bytes": 3811,
+      "imports": []
+    },
+    "node_modules/ajv/dist/ajv.js": {
+      "bytes": 2841,
+      "imports": [
+        {
+          "path": "node_modules/ajv/dist/core.js",
+          "kind": "require-call",
+          "original": "./core"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/draft7.js",
+          "kind": "require-call",
+          "original": "./vocabularies/draft7"
+        },
+        {
+          "path": "node_modules/ajv/dist/vocabularies/discriminator/index.js",
+          "kind": "require-call",
+          "original": "./vocabularies/discriminator"
+        },
+        {
+          "path": "node_modules/ajv/dist/refs/json-schema-draft-07.json",
+          "kind": "require-call",
+          "original": "./refs/json-schema-draft-07.json"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/validate/index.js",
+          "kind": "require-call",
+          "original": "./compile/validate"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/codegen/index.js",
+          "kind": "require-call",
+          "original": "./compile/codegen"
+        },
+        {
+          "path": "node_modules/ajv/dist/runtime/validation_error.js",
+          "kind": "require-call",
+          "original": "./runtime/validation_error"
+        },
+        {
+          "path": "node_modules/ajv/dist/compile/ref_error.js",
+          "kind": "require-call",
+          "original": "./compile/ref_error"
+        }
+      ],
+      "format": "cjs"
+    },
+    "src/codec.ts": {
+      "bytes": 1550,
+      "imports": [
+        {
+          "path": "src/export.ts",
+          "kind": "import-statement",
+          "original": "./export"
+        },
+        {
+          "path": "src/import.ts",
+          "kind": "import-statement",
+          "original": "./import"
+        },
+        {
+          "path": "src/generated/vs_shape_schema.js",
+          "kind": "import-statement",
+          "original": "./generated/vs_shape_schema"
+        },
+        {
+          "path": "node_modules/ajv/dist/ajv.js",
+          "kind": "import-statement",
+          "original": "ajv"
+        },
+        {
+          "path": "./vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node_modules/json5/lib/index.js",
+          "kind": "import-statement",
+          "original": "json5"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/format_definition.ts": {
+      "bytes": 2072,
+      "imports": [
+        {
+          "path": "src/codec.ts",
+          "kind": "import-statement",
+          "original": "./codec"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/formatMod.ts": {
+      "bytes": 405,
+      "imports": [
+        {
+          "path": "src/format_definition.ts",
+          "kind": "import-statement",
+          "original": "../format_definition"
+        },
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "../util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../package.json"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/settingsMod.ts": {
+      "bytes": 7103,
+      "imports": [
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "../util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../package.json"
+        },
+        {
+          "path": "process",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/legacyFormatConverterMod.ts": {
+      "bytes": 3429,
+      "imports": [
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        },
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "../util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../package.json"
+        },
+        {
+          "path": "src/util/events.ts",
+          "kind": "import-statement",
+          "original": "../util/events"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/nodePreviewControllerMod.ts": {
+      "bytes": 5863,
+      "imports": [
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "../util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../package.json"
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        },
+        {
+          "path": "src/mods/ik/constraints.ts",
+          "kind": "import-statement",
+          "original": "./ik/constraints"
+        },
+        {
+          "path": "src/mods/ik/utils.ts",
+          "kind": "import-statement",
+          "original": "./ik/utils"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments/discovery.ts": {
+      "bytes": 3068,
+      "imports": [
+        {
+          "path": "./presets",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments/constants.ts": {
+      "bytes": 558,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/attachments/export_attachment_vs.ts": {
+      "bytes": 30677,
+      "imports": [
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "import-statement",
+          "original": "./presets"
+        },
+        {
+          "path": "../export_model/traverse",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "../property"
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        },
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/attachments/constants.ts",
+          "kind": "import-statement",
+          "original": "./constants"
+        },
+        {
+          "path": "../export_model/group",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/export_model/cube.ts",
+          "kind": "import-statement",
+          "original": "../export_model/cube"
+        },
+        {
+          "path": "src/util/element_tree.ts",
+          "kind": "import-statement",
+          "original": "../util/element_tree"
+        },
+        {
+          "path": "src/export_model/locator.ts",
+          "kind": "require-call",
+          "original": "../export_model/locator"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments/codec.ts": {
+      "bytes": 6814,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/attachments/export_attachment_bb.ts": {
+      "bytes": 716,
+      "imports": [
+        {
+          "path": "src/attachments/codec.ts",
+          "kind": "import-statement",
+          "original": "./codec"
+        },
+        {
+          "path": "src/attachments/constants.ts",
+          "kind": "import-statement",
+          "original": "./constants"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments/delete_section.ts": {
+      "bytes": 5102,
+      "imports": [
+        {
+          "path": "src/attachments/constants.ts",
+          "kind": "import-statement",
+          "original": "./constants"
+        },
+        {
+          "path": "src/attachments/discovery.ts",
+          "kind": "import-statement",
+          "original": "./discovery"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments/slot_helpers.ts": {
+      "bytes": 4161,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/attachments/panel.ts": {
+      "bytes": 29507,
+      "imports": [
+        {
+          "path": "src/attachments/export_attachment_vs.ts",
+          "kind": "import-statement",
+          "original": "./export_attachment_vs"
+        },
+        {
+          "path": "src/attachments/export_attachment_bb.ts",
+          "kind": "import-statement",
+          "original": "./export_attachment_bb"
+        },
+        {
+          "path": "src/attachments/delete_section.ts",
+          "kind": "import-statement",
+          "original": "./delete_section"
+        },
+        {
+          "path": "src/attachments/discovery.ts",
+          "kind": "import-statement",
+          "original": "./discovery"
+        },
+        {
+          "path": "src/attachments/constants.ts",
+          "kind": "import-statement",
+          "original": "./constants"
+        },
+        {
+          "path": "./presets",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/attachments/slot_helpers.ts",
+          "kind": "import-statement",
+          "original": "./slot_helpers"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/util/json.ts": {
+      "bytes": 357,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/attachments/dialogs.ts": {
+      "bytes": 7653,
+      "imports": [
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "import-statement",
+          "original": "./presets"
+        },
+        {
+          "path": "src/attachments/slot_helpers.ts",
+          "kind": "import-statement",
+          "original": "./slot_helpers"
+        },
+        {
+          "path": "./constants",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "src/util/outliner.ts": {
+      "bytes": 3252,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/attachments/post_import.ts": {
+      "bytes": 10790,
+      "imports": [
+        {
+          "path": "src/attachments/presets.ts",
+          "kind": "import-statement",
+          "original": "./presets"
+        },
+        {
+          "path": "src/attachments/dialogs.ts",
+          "kind": "import-statement",
+          "original": "./dialogs"
+        },
+        {
+          "path": "src/util/outliner.ts",
+          "kind": "import-statement",
+          "original": "../util/outliner"
+        },
+        {
+          "path": "src/attachments/constants.ts",
+          "kind": "import-statement",
+          "original": "./constants"
+        },
+        {
+          "path": "src/attachments/panel.ts",
+          "kind": "import-statement",
+          "original": "./panel"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/util/path.ts": {
+      "bytes": 493,
+      "imports": [],
+      "format": "esm"
+    },
+    "src/attachments/texture_handler.ts": {
+      "bytes": 8996,
+      "imports": [
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../util"
+        },
+        {
+          "path": "src/util/path.ts",
+          "kind": "import-statement",
+          "original": "../util/path"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments/importer.ts": {
+      "bytes": 11565,
+      "imports": [
+        {
+          "path": "src/import_model.ts",
+          "kind": "import-statement",
+          "original": "../import_model"
+        },
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/attachments/texture_handler.ts",
+          "kind": "import-statement",
+          "original": "./texture_handler"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments/actions.ts": {
+      "bytes": 6193,
+      "imports": [
+        {
+          "path": "src/attachments/codec.ts",
+          "kind": "import-statement",
+          "original": "./codec"
+        },
+        {
+          "path": "../vs_shape_def",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/util/json.ts",
+          "kind": "import-statement",
+          "original": "../util/json"
+        },
+        {
+          "path": "src/attachments/post_import.ts",
+          "kind": "import-statement",
+          "original": "./post_import"
+        },
+        {
+          "path": "src/attachments/importer.ts",
+          "kind": "import-statement",
+          "original": "./importer"
+        },
+        {
+          "path": "src/attachments/constants.ts",
+          "kind": "import-statement",
+          "original": "./constants"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/attachments.ts": {
+      "bytes": 2905,
+      "imports": [
+        {
+          "path": "src/attachments/discovery.ts",
+          "kind": "import-statement",
+          "original": "./attachments/discovery"
+        },
+        {
+          "path": "src/attachments/panel.ts",
+          "kind": "import-statement",
+          "original": "./attachments/panel"
+        },
+        {
+          "path": "src/attachments/actions.ts",
+          "kind": "import-statement",
+          "original": "./attachments/actions"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/attachmentsMod.ts": {
+      "bytes": 216,
+      "imports": [
+        {
+          "path": "src/util/events.ts",
+          "kind": "import-statement",
+          "original": "../util/events"
+        },
+        {
+          "path": "src/attachments.ts",
+          "kind": "import-statement",
+          "original": "../attachments"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/ik/solver.ts": {
+      "bytes": 5524,
+      "imports": [
+        {
+          "path": "src/mods/ik/math.ts",
+          "kind": "import-statement",
+          "original": "./math"
+        },
+        {
+          "path": "src/mods/ik/utils.ts",
+          "kind": "import-statement",
+          "original": "./utils"
+        },
+        {
+          "path": "./types",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/mods/ik/constraints.ts",
+          "kind": "import-statement",
+          "original": "./constraints"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/ik/interactive.ts": {
+      "bytes": 11674,
+      "imports": [
+        {
+          "path": "src/mods/ik/math.ts",
+          "kind": "import-statement",
+          "original": "./math"
+        },
+        {
+          "path": "src/mods/ik/utils.ts",
+          "kind": "import-statement",
+          "original": "./utils"
+        },
+        {
+          "path": "src/mods/ik/solver.ts",
+          "kind": "import-statement",
+          "original": "./solver"
+        },
+        {
+          "path": "src/mods/ik/constraints.ts",
+          "kind": "import-statement",
+          "original": "./constraints"
+        },
+        {
+          "path": "./types",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "src/mods/ik/solver.ts",
+          "kind": "import-statement",
+          "original": "./solver"
+        },
+        {
+          "path": "src/mods/ik/chain_utils.ts",
+          "kind": "import-statement",
+          "original": "./chain_utils"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/ik/properties.ts": {
+      "bytes": 13461,
+      "imports": [
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../../package.json"
+        },
+        {
+          "path": "src/mods/ik/constraints.ts",
+          "kind": "import-statement",
+          "original": "./constraints"
+        },
+        {
+          "path": "src/mods/ik/chain_utils.ts",
+          "kind": "import-statement",
+          "original": "./chain_utils"
+        },
+        {
+          "path": "src/mods/ik/interactive.ts",
+          "kind": "import-statement",
+          "original": "./interactive"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/mods/ik/index.ts": {
+      "bytes": 3666,
+      "imports": [
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "../../util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../../package.json"
+        },
+        {
+          "path": "src/util.ts",
+          "kind": "import-statement",
+          "original": "../../util"
+        },
+        {
+          "path": "src/codec.ts",
+          "kind": "import-statement",
+          "original": "../../codec"
+        },
+        {
+          "path": "src/mods/ik/properties.ts",
+          "kind": "import-statement",
+          "original": "./properties"
+        },
+        {
+          "path": "src/mods/ik/interactive.ts",
+          "kind": "import-statement",
+          "original": "./interactive"
+        },
+        {
+          "path": "src/mods/ik/baking.ts",
+          "kind": "import-statement",
+          "original": "./baking"
+        },
+        {
+          "path": "src/mods/ik/chain_utils.ts",
+          "kind": "import-statement",
+          "original": "./chain_utils"
+        },
+        {
+          "path": "src/mods/ik/constraints.ts",
+          "kind": "import-statement",
+          "original": "./constraints"
+        },
+        {
+          "path": "src/mods/ik/utils.ts",
+          "kind": "import-statement",
+          "original": "./utils"
+        },
+        {
+          "path": "src/mods/boneAnimatorMod.ts",
+          "kind": "import-statement",
+          "original": "../boneAnimatorMod"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/panels/vs_face_panel.ts": {
+      "bytes": 16331,
+      "imports": [
+        {
+          "path": "src/util/moddingTools.ts",
+          "kind": "import-statement",
+          "original": "../util/moddingTools"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../../package.json"
+        }
+      ],
+      "format": "esm"
+    },
+    "src/vs_plugin.ts": {
+      "bytes": 1517,
+      "imports": [
+        {
+          "path": "src/util/events.ts",
+          "kind": "import-statement",
+          "original": "./util/events"
+        },
+        {
+          "path": "package.json",
+          "kind": "import-statement",
+          "original": "../package.json"
+        },
+        {
+          "path": "src/debug_actions.ts",
+          "kind": "import-statement",
+          "original": "./debug_actions"
+        },
+        {
+          "path": "src/actions.ts",
+          "kind": "import-statement",
+          "original": "./actions"
+        },
+        {
+          "path": "src/property.ts",
+          "kind": "import-statement",
+          "original": "./property"
+        },
+        {
+          "path": "src/mods/boneAnimatorMod.ts",
+          "kind": "import-statement",
+          "original": "./mods/boneAnimatorMod"
+        },
+        {
+          "path": "src/mods/formatMod.ts",
+          "kind": "import-statement",
+          "original": "./mods/formatMod"
+        },
+        {
+          "path": "src/mods/settingsMod.ts",
+          "kind": "import-statement",
+          "original": "./mods/settingsMod"
+        },
+        {
+          "path": "src/mods/legacyFormatConverterMod.ts",
+          "kind": "import-statement",
+          "original": "./mods/legacyFormatConverterMod"
+        },
+        {
+          "path": "src/mods/nodePreviewControllerMod.ts",
+          "kind": "import-statement",
+          "original": "./mods/nodePreviewControllerMod"
+        },
+        {
+          "path": "src/mods/attachmentsMod.ts",
+          "kind": "import-statement",
+          "original": "./mods/attachmentsMod"
+        },
+        {
+          "path": "src/mods/ik/index.ts",
+          "kind": "import-statement",
+          "original": "./mods/ik/index"
+        },
+        {
+          "path": "src/panels/vs_face_panel.ts",
+          "kind": "import-statement",
+          "original": "./panels/vs_face_panel"
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "dist/vs_plugin.js": {
+      "imports": [
+        {
+          "path": "fs",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "path",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "process",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "src/vs_plugin.ts",
+      "inputs": {
+        "src/util.ts": {
+          "bytesInOutput": 834
+        },
+        "node_modules/json5/lib/unicode.js": {
+          "bytesInOutput": 15776
+        },
+        "node_modules/json5/lib/util.js": {
+          "bytesInOutput": 524
+        },
+        "node_modules/json5/lib/parse.js": {
+          "bytesInOutput": 8398
+        },
+        "node_modules/json5/lib/stringify.js": {
+          "bytesInOutput": 2587
+        },
+        "node_modules/json5/lib/index.js": {
+          "bytesInOutput": 82
+        },
+        "src/attachments/presets.ts": {
+          "bytesInOutput": 1896
+        },
+        "src/export_model/locator.ts": {
+          "bytesInOutput": 443
+        },
+        "node_modules/ajv/dist/compile/codegen/code.js": {
+          "bytesInOutput": 2551
+        },
+        "node_modules/ajv/dist/compile/codegen/scope.js": {
+          "bytesInOutput": 2585
+        },
+        "node_modules/ajv/dist/compile/codegen/index.js": {
+          "bytesInOutput": 11758
+        },
+        "node_modules/ajv/dist/compile/util.js": {
+          "bytesInOutput": 3570
+        },
+        "node_modules/ajv/dist/compile/names.js": {
+          "bytesInOutput": 629
+        },
+        "node_modules/ajv/dist/compile/errors.js": {
+          "bytesInOutput": 3104
+        },
+        "node_modules/ajv/dist/compile/validate/boolSchema.js": {
+          "bytesInOutput": 672
+        },
+        "node_modules/ajv/dist/compile/rules.js": {
+          "bytesInOutput": 570
+        },
+        "node_modules/ajv/dist/compile/validate/applicability.js": {
+          "bytesInOutput": 480
+        },
+        "node_modules/ajv/dist/compile/validate/dataType.js": {
+          "bytesInOutput": 4111
+        },
+        "node_modules/ajv/dist/compile/validate/defaults.js": {
+          "bytesInOutput": 680
+        },
+        "node_modules/ajv/dist/vocabularies/code.js": {
+          "bytesInOutput": 3106
+        },
+        "node_modules/ajv/dist/compile/validate/keyword.js": {
+          "bytesInOutput": 2961
+        },
+        "node_modules/ajv/dist/compile/validate/subschema.js": {
+          "bytesInOutput": 1978
+        },
+        "node_modules/fast-deep-equal/index.js": {
+          "bytesInOutput": 736
+        },
+        "node_modules/json-schema-traverse/index.js": {
+          "bytesInOutput": 1246
+        },
+        "node_modules/ajv/dist/compile/resolve.js": {
+          "bytesInOutput": 2087
+        },
+        "node_modules/ajv/dist/compile/validate/index.js": {
+          "bytesInOutput": 10181
+        },
+        "node_modules/ajv/dist/runtime/validation_error.js": {
+          "bytesInOutput": 206
+        },
+        "node_modules/ajv/dist/compile/ref_error.js": {
+          "bytesInOutput": 323
+        },
+        "node_modules/ajv/dist/compile/index.js": {
+          "bytesInOutput": 4688
+        },
+        "node_modules/ajv/dist/refs/data.json": {
+          "bytesInOutput": 358
+        },
+        "node_modules/fast-uri/lib/scopedChars.js": {
+          "bytesInOutput": 163
+        },
+        "node_modules/fast-uri/lib/utils.js": {
+          "bytesInOutput": 2642
+        },
+        "node_modules/fast-uri/lib/schemes.js": {
+          "bytesInOutput": 2043
+        },
+        "node_modules/fast-uri/index.js": {
+          "bytesInOutput": 4324
+        },
+        "node_modules/ajv/dist/runtime/uri.js": {
+          "bytesInOutput": 155
+        },
+        "node_modules/ajv/dist/core.js": {
+          "bytesInOutput": 12282
+        },
+        "node_modules/ajv/dist/vocabularies/core/id.js": {
+          "bytesInOutput": 195
+        },
+        "node_modules/ajv/dist/vocabularies/core/ref.js": {
+          "bytesInOutput": 2379
+        },
+        "node_modules/ajv/dist/vocabularies/core/index.js": {
+          "bytesInOutput": 213
+        },
+        "node_modules/ajv/dist/vocabularies/validation/limitNumber.js": {
+          "bytesInOutput": 666
+        },
+        "node_modules/ajv/dist/vocabularies/validation/multipleOf.js": {
+          "bytesInOutput": 551
+        },
+        "node_modules/ajv/dist/runtime/ucs2length.js": {
+          "bytesInOutput": 301
+        },
+        "node_modules/ajv/dist/vocabularies/validation/limitLength.js": {
+          "bytesInOutput": 629
+        },
+        "node_modules/ajv/dist/vocabularies/validation/pattern.js": {
+          "bytesInOutput": 497
+        },
+        "node_modules/ajv/dist/vocabularies/validation/limitProperties.js": {
+          "bytesInOutput": 549
+        },
+        "node_modules/ajv/dist/vocabularies/validation/required.js": {
+          "bytesInOutput": 1400
+        },
+        "node_modules/ajv/dist/vocabularies/validation/limitItems.js": {
+          "bytesInOutput": 510
+        },
+        "node_modules/ajv/dist/runtime/equal.js": {
+          "bytesInOutput": 157
+        },
+        "node_modules/ajv/dist/vocabularies/validation/uniqueItems.js": {
+          "bytesInOutput": 1499
+        },
+        "node_modules/ajv/dist/vocabularies/validation/const.js": {
+          "bytesInOutput": 439
+        },
+        "node_modules/ajv/dist/vocabularies/validation/enum.js": {
+          "bytesInOutput": 921
+        },
+        "node_modules/ajv/dist/vocabularies/validation/index.js": {
+          "bytesInOutput": 381
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/additionalItems.js": {
+          "bytesInOutput": 1090
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/items.js": {
+          "bytesInOutput": 1075
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/prefixItems.js": {
+          "bytesInOutput": 227
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/items2020.js": {
+          "bytesInOutput": 530
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/contains.js": {
+          "bytesInOutput": 1734
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/dependencies.js": {
+          "bytesInOutput": 1565
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/propertyNames.js": {
+          "bytesInOutput": 630
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js": {
+          "bytesInOutput": 1741
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/properties.js": {
+          "bytesInOutput": 992
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/patternProperties.js": {
+          "bytesInOutput": 1168
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/not.js": {
+          "bytesInOutput": 435
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/anyOf.js": {
+          "bytesInOutput": 229
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/oneOf.js": {
+          "bytesInOutput": 912
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/allOf.js": {
+          "bytesInOutput": 407
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/if.js": {
+          "bytesInOutput": 1105
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/thenElse.js": {
+          "bytesInOutput": 278
+        },
+        "node_modules/ajv/dist/vocabularies/applicator/index.js": {
+          "bytesInOutput": 462
+        },
+        "node_modules/ajv/dist/vocabularies/format/format.js": {
+          "bytesInOutput": 1927
+        },
+        "node_modules/ajv/dist/vocabularies/format/index.js": {
+          "bytesInOutput": 121
+        },
+        "node_modules/ajv/dist/vocabularies/metadata.js": {
+          "bytesInOutput": 308
+        },
+        "node_modules/ajv/dist/vocabularies/draft7.js": {
+          "bytesInOutput": 235
+        },
+        "node_modules/ajv/dist/vocabularies/discriminator/types.js": {
+          "bytesInOutput": 181
+        },
+        "node_modules/ajv/dist/vocabularies/discriminator/index.js": {
+          "bytesInOutput": 2288
+        },
+        "node_modules/ajv/dist/refs/json-schema-draft-07.json": {
+          "bytesInOutput": 2481
+        },
+        "node_modules/ajv/dist/ajv.js": {
+          "bytesInOutput": 1671
+        },
+        "package.json": {
+          "bytesInOutput": 1110
+        },
+        "src/util/subscribable.ts": {
+          "bytesInOutput": 351
+        },
+        "src/util/events.ts": {
+          "bytesInOutput": 1467
+        },
+        "src/util/moddingTools.ts": {
+          "bytesInOutput": 736
+        },
+        "src/debug_actions.ts": {
+          "bytesInOutput": 4068
+        },
+        "src/actions.ts": {
+          "bytesInOutput": 1404
+        },
+        "src/import.ts": {
+          "bytesInOutput": 655
+        },
+        "src/import_model/group.ts": {
+          "bytesInOutput": 909
+        },
+        "src/property.ts": {
+          "bytesInOutput": 4050
+        },
+        "src/import_model/locator.ts": {
+          "bytesInOutput": 337
+        },
+        "src/vs_shape_def.ts": {
+          "bytesInOutput": 108
+        },
+        "src/import_model/cube/faces.ts": {
+          "bytesInOutput": 362
+        },
+        "src/import_model/cube/factory.ts": {
+          "bytesInOutput": 394
+        },
+        "src/import_model/cube.ts": {
+          "bytesInOutput": 257
+        },
+        "src/import_model/traverse.ts": {
+          "bytesInOutput": 401
+        },
+        "src/transform.ts": {
+          "bytesInOutput": 844
+        },
+        "src/util/element_tree.ts": {
+          "bytesInOutput": 155
+        },
+        "src/import_model.ts": {
+          "bytesInOutput": 119
+        },
+        "src/import_animation.ts": {
+          "bytesInOutput": 1019
+        },
+        "src/util/misc.ts": {
+          "bytesInOutput": 509
+        },
+        "src/export_model/cube/faces.ts": {
+          "bytesInOutput": 734
+        },
+        "src/export_model/cube/factory.ts": {
+          "bytesInOutput": 551
+        },
+        "src/export_model/cube.ts": {
+          "bytesInOutput": 373
+        },
+        "src/export_model/group.ts": {
+          "bytesInOutput": 2229
+        },
+        "src/export_model/traverse.ts": {
+          "bytesInOutput": 372
+        },
+        "src/export_model.ts": {
+          "bytesInOutput": 123
+        },
+        "src/export_animation.ts": {
+          "bytesInOutput": 2716
+        },
+        "src/export_textures.ts": {
+          "bytesInOutput": 647
+        },
+        "src/export.ts": {
+          "bytesInOutput": 1765
+        },
+        "src/mods/boneAnimatorMod.ts": {
+          "bytesInOutput": 3244
+        },
+        "src/mods/ik/constraint_visualizer.ts": {
+          "bytesInOutput": 4322
+        },
+        "src/mods/ik/chain_utils.ts": {
+          "bytesInOutput": 553
+        },
+        "src/mods/ik/constraints.ts": {
+          "bytesInOutput": 6829
+        },
+        "src/mods/ik/math.ts": {
+          "bytesInOutput": 755
+        },
+        "src/mods/ik/utils.ts": {
+          "bytesInOutput": 756
+        },
+        "src/mods/ik/baking.ts": {
+          "bytesInOutput": 3716
+        },
+        "src/generated/vs_shape_schema.js": {
+          "bytesInOutput": 4407
+        },
+        "src/codec.ts": {
+          "bytesInOutput": 692
+        },
+        "src/format_definition.ts": {
+          "bytesInOutput": 1011
+        },
+        "src/mods/formatMod.ts": {
+          "bytesInOutput": 66
+        },
+        "src/mods/settingsMod.ts": {
+          "bytesInOutput": 2897
+        },
+        "src/mods/legacyFormatConverterMod.ts": {
+          "bytesInOutput": 1320
+        },
+        "src/mods/nodePreviewControllerMod.ts": {
+          "bytesInOutput": 1895
+        },
+        "src/attachments/discovery.ts": {
+          "bytesInOutput": 958
+        },
+        "src/attachments/export_attachment_vs.ts": {
+          "bytesInOutput": 8641
+        },
+        "src/attachments/codec.ts": {
+          "bytesInOutput": 1674
+        },
+        "src/attachments/export_attachment_bb.ts": {
+          "bytesInOutput": 224
+        },
+        "src/attachments/delete_section.ts": {
+          "bytesInOutput": 1320
+        },
+        "src/attachments/slot_helpers.ts": {
+          "bytesInOutput": 1499
+        },
+        "src/attachments/panel.ts": {
+          "bytesInOutput": 17190
+        },
+        "src/util/json.ts": {
+          "bytesInOutput": 53
+        },
+        "src/attachments/post_import.ts": {
+          "bytesInOutput": 3423
+        },
+        "src/attachments/dialogs.ts": {
+          "bytesInOutput": 2974
+        },
+        "src/util/outliner.ts": {
+          "bytesInOutput": 669
+        },
+        "src/attachments/texture_handler.ts": {
+          "bytesInOutput": 1926
+        },
+        "src/util/path.ts": {
+          "bytesInOutput": 108
+        },
+        "src/attachments/importer.ts": {
+          "bytesInOutput": 3683
+        },
+        "src/attachments/actions.ts": {
+          "bytesInOutput": 1981
+        },
+        "src/attachments.ts": {
+          "bytesInOutput": 1373
+        },
+        "src/mods/attachmentsMod.ts": {
+          "bytesInOutput": 73
+        },
+        "src/mods/ik/index.ts": {
+          "bytesInOutput": 990
+        },
+        "src/mods/ik/solver.ts": {
+          "bytesInOutput": 823
+        },
+        "src/mods/ik/interactive.ts": {
+          "bytesInOutput": 3229
+        },
+        "src/mods/ik/properties.ts": {
+          "bytesInOutput": 4810
+        },
+        "src/panels/vs_face_panel.ts": {
+          "bytesInOutput": 9005
+        },
+        "src/vs_plugin.ts": {
+          "bytesInOutput": 485
+        }
+      },
+      "bytes": 275081
+    }
+  }
+}

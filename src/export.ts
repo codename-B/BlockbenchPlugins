@@ -1,8 +1,10 @@
 import {export_model} from "./export_model";
-import {export_animations} from "./export_animation";
+import { compile_animation_library } from "./export_animation";
 import { VS_EditorSettings, VS_Shape } from "./vs_shape_def";
 import { VS_PROJECT_PROPS } from "./property";
 import { export_textures, resolveTextureLocation } from "./export_textures";
+import { path_to_reference } from "./animation_library_paths";
+import { is_backdrop_project } from "./util/misc";
 
 // @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
@@ -141,8 +143,22 @@ export function ex(options): VS_Shape {
     // Export model elements
     const elements = export_model();
 
-    // Export animations
-    const animations = export_animations();
+    // Partition animations by file: path-less ones are inline (embedded in the shape),
+    // while animations belonging to a library file are referenced via animationLibraries
+    // (the library file itself is saved separately through the animation codec / panel).
+    const allAnimations = (Animation as unknown as typeof _Animation).all;
+    const inlineAnimations = compile_animation_library(allAnimations.filter(a => !a.path)).animations;
+
+    const libraryRefs: string[] = [];
+    if (!is_backdrop_project()) {
+        const seenRefs = new Set<string>();
+        for (const animation of allAnimations) {
+            if (!animation.path) continue;
+            // @ts-expect-error: custom property for round-trip fidelity
+            const ref: string | null = animation.vs_library_ref ?? path_to_reference(animation.path);
+            if (ref && !seenRefs.has(ref)) { seenRefs.add(ref); libraryRefs.push(ref); }
+        }
+    }
 
     // Populate Editor Info
     const editor: VS_EditorSettings = {};
@@ -159,8 +175,12 @@ export function ex(options): VS_Shape {
         textureSizes: textureSizes,
         textures: textures,
         elements: elements,
-        animations: animations,
+        animations: inlineAnimations,
     };
+
+    if (libraryRefs.length > 0) {
+        data.animationLibraries = libraryRefs;
+    }
 
     return data;
 }
