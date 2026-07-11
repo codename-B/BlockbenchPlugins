@@ -1,4 +1,7 @@
 import { createExportCodec } from './codec';
+import { QUICK_MESSAGE_DURATION } from './constants';
+
+const DEBUG = false;
 
 /**
  * Exports the selected attachments to the standard Blockbench (.bbmodel) format.
@@ -6,12 +9,12 @@ import { createExportCodec } from './codec';
  */
 export function exportAttachmentsBB(selection: Group[]) {
     if (!selection || selection.length === 0) {
-        alert("Please select one or more attachments to export.");
+        Blockbench.showQuickMessage("Please select one or more attachments to export.", QUICK_MESSAGE_DURATION);
         return;
     }
 
     const bb_codec = createExportCodec();
     bb_codec.export(selection);
     
-    console.log("Exporting selected attachments to .bbmodel format...");
+    if (DEBUG) console.log("Exporting selected attachments to .bbmodel format...");
 }

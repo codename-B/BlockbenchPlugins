@@ -1,12 +1,33 @@
 export function createExportCodec() {
-    function compileGroupsFrom(rootGroups: any[], undo: boolean): any[] {
+    /**
+     * Compiles groups for the outliner, preserving clothingSlot only on root groups.
+     * Also sets stepParentName on root groups so they can be correctly placed in hierarchy on import.
+     * @param rootGroups The root groups being exported (these should keep clothingSlot)
+     * @param undo Whether this is for undo purposes
+     * @param rootGroupUuids Set of UUIDs for root groups that should keep clothingSlot
+     * @param parentNameMap Map of root group UUIDs to their original parent group names
+     */
+    function compileGroupsFrom(rootGroups: any[], undo: boolean, rootGroupUuids: Set<string>, parentNameMap: Map<string, string>): any[] {
         const result: any[] = [];
-        function iterate(array: any[], save_array: any[]) {
+        function iterate(array: any[], save_array: any[], isRoot: boolean = false) {
             for (const element of array) {
                 if (element.type === 'group') {
                     const obj = element.compile(undo);
+                    // Only preserve clothingSlot on root attachment groups
+                    // Clear it from nested groups to prevent duplicate attachment detection on import
+                    if (!rootGroupUuids.has(element.uuid)) {
+                        delete obj.clothingSlot;
+                    }
+                    // Set stepParentName on root groups so they can be placed correctly on import
+                    // This tells the importer where this group should go in the target model's hierarchy
+                    if (isRoot && rootGroupUuids.has(element.uuid)) {
+                        const parentName = parentNameMap.get(element.uuid);
+                        if (parentName) {
+                            obj.stepParentName = parentName;
+                        }
+                    }
                     if (element.children.length > 0) {
-                        iterate(element.children, obj.children);
+                        iterate(element.children, obj.children, false);
                     }
                     save_array.push(obj);
                 } else {
@@ -14,7 +35,7 @@ export function createExportCodec() {
                 }
             }
         }
-        iterate(rootGroups, result);
+        iterate(rootGroups, result, true);
         return result;
     }
 
@@ -90,19 +111,37 @@ export function createExportCodec() {
                 outliner: []
             };
 
+            // Track root group UUIDs - these are the groups that should keep their clothingSlot
+            // Also track their parent names for correct hierarchy placement on import
+            const rootGroupUuids = new Set<string>();
+            const parentNameMap = new Map<string, string>();
+            selection.forEach(el => {
+                if (el instanceof Group) {
+                    rootGroupUuids.add(el.uuid);
+                    // Store the parent group name so the importer knows where to place this group
+                    if (el.parent && el.parent instanceof Group) {
+                        parentNameMap.set(el.uuid, el.parent.name);
+                    }
+                }
+            });
+
             // Use the recursive function to collect all nested elements
             const allElements = collectAllElements(selection);
 
             // Collect all cubes from the selection
+            // Strip clothingSlot from cubes to prevent them from being detected as individual attachments on import
             const cubes: any[] = [];
             allElements.forEach(el => {
                 if (el instanceof Cube) {
                     cubes.push(el);
-                    model.elements.push(el.getSaveCopy());
+                    const saveCopy = el.getSaveCopy();
+                    // Remove clothingSlot from cubes - they inherit from their parent group
+                    delete saveCopy.clothingSlot;
+                    model.elements.push(saveCopy);
                 }
             });
 
-            model.outliner = compileGroupsFrom(selection, true);
+            model.outliner = compileGroupsFrom(selection, true, rootGroupUuids, parentNameMap);
 
             // Only export textures that are actually used by the selected elements
             const usedTextureUuids = collectUsedTextureUuids(cubes);

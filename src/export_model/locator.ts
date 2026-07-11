@@ -17,19 +17,26 @@ export function process_locators(
         return attachmentPoints;
     }
 
-    const parent_pos: [number, number, number] = parent ? parent.origin : [0, 0, 0];
+    // Use vs_group_from for consistency with group/cube export parent reference
+    const parent_pos: [number, number, number] = parent
+        ? ((parent as any).vs_group_from ?? parent.origin)
+        : [0, 0, 0];
 
     for (const locator of locators) {
         if (!locator.export) continue;
 
-        // Get locator position
-        const locator_pos: [number, number, number] = (locator as any).position || [0, 0, 0];
+        // Locator position is stored in .from (not .position)
+        const locator_pos: [number, number, number] = (locator.from ?? (locator as any).position ?? [0, 0, 0]) as [number, number, number];
 
         // Calculate position relative to parent
         const relative_pos = util.vector_sub(locator_pos, parent_pos);
 
-        // Get rotation (Blockbench uses degrees, VS uses degrees too)
-        const rotation: [number, number, number] = (locator as any).rotation || [0, 0, 0];
+        // Read rotation from registered properties (persisted in .bbmodel)
+        const rotation: [number, number, number] = [
+            (locator as any).rotationX || 0,
+            (locator as any).rotationY || 0,
+            (locator as any).rotationZ || 0,
+        ];
 
         const attachmentPoint: VS_AttachmentPoint = {
             code: locator.name,

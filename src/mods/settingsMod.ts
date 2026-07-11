@@ -158,4 +158,40 @@ createBlockbenchMod(
     }
 );
 
+createBlockbenchMod(
+    `${PACKAGE.name}:vs_model_offset_settings_mod`,
+    {},
+    _context => {
+        const setting = new Setting("vs_apply_model_offset", {
+            name: "Apply Model Offset",
+            description: "Apply [8, 0, 8] offset to exported models for Vintage Story engine centering. Disable if your models are already positioned correctly.",
+            category: "general",
+            type: "checkbox",
+            value: true
+        });
+        return setting;
+    },
+    context => {
+        //context?.delete();
+    }
+);
+
+createBlockbenchMod(
+    `${PACKAGE.name}:vs_export_textures_settings_mod`,
+    {},
+    _context => {
+        const setting = new Setting("vs_export_textures", {
+            name: "Export Texture Files",
+            description: "Automatically save texture files to disk when exporting models. Disable to only include texture references in the JSON without saving the actual texture files.",
+            category: "general",
+            type: "checkbox",
+            value: false
+        });
+        return setting;
+    },
+    context => {
+        //context?.delete();
+    }
+);
+
 

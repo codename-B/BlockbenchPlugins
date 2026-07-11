@@ -46,6 +46,12 @@ function buildTextureMap(model: BBModel): Map<TextureRef, any> {
         if (!texture) {
             texture = new Texture(texData).add();
 
+            // Preserve textureLocation if it exists in the imported data
+            if (typeof (texData as any).textureLocation === 'string') {
+                (texture as any).textureLocation = (texData as any).textureLocation;
+                logDebug(`[Import BB] Set textureLocation: ${(texData as any).textureLocation}`);
+            }
+
             // Load texture from embedded base64 or from disk path (when available)
             if (typeof texData.source === 'string' && texData.source.length > 0) {
                 texture.fromDataURL(texData.source);
@@ -60,6 +66,12 @@ function buildTextureMap(model: BBModel): Map<TextureRef, any> {
             // Update UV size for existing texture to match the imported data
             if (typeof texData.uv_width === 'number') texture.uv_width = texData.uv_width;
             if (typeof texData.uv_height === 'number') texture.uv_height = texData.uv_height;
+
+            // Update textureLocation if it exists in the imported data and isn't already set
+            if (typeof (texData as any).textureLocation === 'string' && !(texture as any).textureLocation) {
+                (texture as any).textureLocation = (texData as any).textureLocation;
+                logDebug(`[Import BB] Updated textureLocation: ${(texData as any).textureLocation}`);
+            }
 
             logDebug(
                 `[Import BB] Using existing texture: ${texture.name}, updated UV size to ${texture.uv_width}x${texture.uv_height}`
@@ -96,6 +108,33 @@ function createCubeFromElementData(elemData: BBCubeElement, parentGroup: any, te
     delete cubeProps.uuid;
 
     remapCubeFaceTextures(cubeProps, textureMap);
+
+    // Handle legacy bbmodel files where clothingSlot is on cubes instead of groups.
+    // If the cube has a clothingSlot, propagate it up the hierarchy to parent groups.
+    // Stop when we reach a parent that already has a clothingSlot (this is a boundary - either
+    // an existing attachment group or a base model group that has been marked).
+    // Then clear clothingSlot from the cube since cubes should inherit from their parent group.
+    const cubeClothingSlot = cubeProps.clothingSlot;
+    if (cubeClothingSlot && typeof cubeClothingSlot === 'string' && cubeClothingSlot.trim() !== '') {
+        // Propagate clothingSlot up the hierarchy, but stop at boundaries
+        let currentGroup: any = parentGroup;
+        while (currentGroup && currentGroup instanceof Group) {
+            const existingSlot = currentGroup.clothingSlot;
+            // If this group already has a clothingSlot, stop propagation (we've hit a boundary)
+            if (existingSlot && existingSlot.trim() !== '') {
+                logDebug(`[Import BB] Stopped propagation at group "${currentGroup.name}" which already has clothingSlot "${existingSlot}"`);
+                break;
+            }
+            // This group doesn't have a clothingSlot - propagate it up
+            currentGroup.clothingSlot = cubeClothingSlot;
+            logDebug(`[Import BB] Propagated clothingSlot "${cubeClothingSlot}" from cube to group "${currentGroup.name}"`);
+            // Move up to the parent group
+            currentGroup = currentGroup.parent;
+        }
+        // Clear clothingSlot from the cube to prevent it from being detected as a separate attachment
+        delete cubeProps.clothingSlot;
+        logDebug(`[Import BB] Cleared clothingSlot from cube: ${cubeProps.name ?? '(unnamed)'}`);
+    }
 
     const cube = new Cube(cubeProps);
     cube.addTo(parentGroup).init();

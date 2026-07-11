@@ -30,6 +30,8 @@ export interface VS_Element {
     name: string,
     from: [number, number, number],
     to: [number, number, number],
+    unwrapMode?: number,
+    unwrapRotation?: number,
     autoUnwrap?: boolean,
     disableRandomDrawOffset?: boolean,
     climateColorMap?: string,
@@ -87,6 +89,7 @@ export type VS_OnAnimationEnd = "Hold" | "Repeat" | "Stop" | "EaseOut"
 export interface VS_Keyframe {
     frame: number,
     elements: Record<string, VS_AnimationKey>,
+    textures?: Record<string, string>,
 }
 
 /**
@@ -104,9 +107,9 @@ export interface VS_AnimationKey {
     rotShortestDistanceX?: boolean,
     rotShortestDistanceY?: boolean,
     rotShortestDistanceZ?: boolean,
-    scaleX?: number,
-    scaleY?: number,
-    scaleZ?: number,
+    stretchX?: number,
+    stretchY?: number,
+    stretchZ?: number,
 }
 
 /**

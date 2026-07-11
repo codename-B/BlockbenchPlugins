@@ -29,12 +29,15 @@ export function create_VS_element(parent: Group | null, node: Cube, parent_pos: 
         rotationOrigin = util.vector_add(rotationOrigin, offset);
     }
 
+    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
+    const includeRotationOrigin = hasRotation || (node as any).vs_has_rotation_origin;
+
     return {
         name: node.name,
         from: from,
         to: to,
-        rotationOrigin: rotationOrigin,
-        ...((node.uv_offset[0] !== 0 || node.uv_offset[1] !== 0) && { uv: node.uv_offset }),
+        ...(includeRotationOrigin && { rotationOrigin: rotationOrigin }),
+        ...((node as any).vs_uv ? { uv: (node as any).vs_uv } : ((node.uv_offset[0] !== 0 || node.uv_offset[1] !== 0) && { uv: node.uv_offset })),
         faces: faces,
         ...(converted_rotation[0] !== 0 && { rotationX: converted_rotation[0] }),
         ...(converted_rotation[1] !== 0 && { rotationY: converted_rotation[1] }),

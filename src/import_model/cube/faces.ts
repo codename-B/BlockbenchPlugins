@@ -27,10 +27,17 @@ export function process_faces(faces: Partial<Record<VS_Direction, VS_Face>> | un
                 });
                 texture.fromDataURL(texture.getBase64()).add();
             }
-            processed_faces[direction] = { 
-                texture: texture, 
-                uv: faceData.uv, 
-                rotation: faceData.rotation
+            // Apply 180° rotation correction for down faces (inverse of export correction)
+            let rotation = faceData.rotation;
+            if (direction === VS_Direction.DOWN) {
+                rotation = ((rotation || 0) + 180) % 360;
+            }
+
+            processed_faces[direction] = {
+                texture: texture,
+                uv: faceData.uv,
+                rotation: rotation,
+                ...(faceData.enabled === false && { enabled: false }),
             };
         }
     }

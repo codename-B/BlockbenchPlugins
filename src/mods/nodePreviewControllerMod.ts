@@ -1,6 +1,8 @@
 import { createBlockbenchMod } from "../util/moddingTools";
 import * as PACKAGE from "../../package.json";
 import { is_vs_project } from "../util";
+import { getAnimatedConstraintsForBone } from "./ik/constraints";
+import { isIKAnimationContextActive } from "./ik/utils";
 
 
 createBlockbenchMod(`${PACKAGE.name}:node_preview_controller_mod`,
@@ -14,6 +16,9 @@ createBlockbenchMod(`${PACKAGE.name}:node_preview_controller_mod`,
                     return updateStepChildTransform(this, node);                    
                 }
 
+                const result = inject_context.original.call(this, node);
+                applyConstrainedGroupRotation(node);
+                return result;
             }
             return inject_context.original.call(this, node);
         };
@@ -27,7 +32,7 @@ createBlockbenchMod(`${PACKAGE.name}:node_preview_controller_mod`,
 /**
  * Does the same as the original method but skips parenting root groups to the internal root mesh (commented section)
  */
-function updateStepChildTransform(controller: NodePreviewController, element: OutlinerNode) {
+function updateStepChildTransform(controller: NodePreviewController, element: any) {
     //@ts-expect-error: missing types
     const mesh = element.mesh;
 
@@ -39,12 +44,13 @@ function updateStepChildTransform(controller: NodePreviewController, element: Ou
 
         //@ts-expect-error: missing types
         if (element.getTypeBehavior('rotatable')) {
+            const rotation = getPreviewRotation(element);
             //@ts-expect-error: missing types
-            mesh.rotation.x = Math.degToRad(element.rotation[0]);
+            mesh.rotation.x = Math.degToRad(rotation[0]);
             //@ts-expect-error: missing types
-            mesh.rotation.y = Math.degToRad(element.rotation[1]);
+            mesh.rotation.y = Math.degToRad(rotation[1]);
             //@ts-expect-error: missing types
-            mesh.rotation.z = Math.degToRad(element.rotation[2]);
+            mesh.rotation.z = Math.degToRad(rotation[2]);
         }
     
     //@ts-expect-error: missing types
@@ -87,5 +93,64 @@ function updateStepChildTransform(controller: NodePreviewController, element: Ou
     mesh.updateMatrixWorld();
 
     controller.dispatchEvent('update_transform', { element });
+}
+
+function getPreviewRotation(element: any): [number, number, number] {
+    const rotation: [number, number, number] = [
+        element.rotation?.[0] || 0,
+        element.rotation?.[1] || 0,
+        element.rotation?.[2] || 0
+    ];
+
+    if (!isIKAnimationContextActive()) {
+        return rotation;
+    }
+
+    if (!(element instanceof Group)) {
+        return rotation;
+    }
+
+    const constraint = getAnimatedConstraintsForBone(element.name);
+    if (!constraint) {
+        return rotation;
+    }
+
+    if (constraint.allowedAxes) {
+        if (!constraint.allowedAxes.x) rotation[0] = 0;
+        if (!constraint.allowedAxes.y) rotation[1] = 0;
+        if (!constraint.allowedAxes.z) rotation[2] = 0;
+    }
+
+    if (constraint.rotationLimits) {
+        if (constraint.rotationLimits.x) {
+            rotation[0] = Math.max(constraint.rotationLimits.x.min, Math.min(constraint.rotationLimits.x.max, rotation[0]));
+        }
+        if (constraint.rotationLimits.y) {
+            rotation[1] = Math.max(constraint.rotationLimits.y.min, Math.min(constraint.rotationLimits.y.max, rotation[1]));
+        }
+        if (constraint.rotationLimits.z) {
+            rotation[2] = Math.max(constraint.rotationLimits.z.min, Math.min(constraint.rotationLimits.z.max, rotation[2]));
+        }
+    }
+
+    return rotation;
+}
+
+function applyConstrainedGroupRotation(node: any): void {
+    if (!(node instanceof Group)) {
+        return;
+    }
+
+    //@ts-expect-error: missing types
+    const mesh = node.mesh;
+    if (!mesh?.rotation) {
+        return;
+    }
+
+    const rotation = getPreviewRotation(node);
+    mesh.rotation.x = Math.degToRad(rotation[0]);
+    mesh.rotation.y = Math.degToRad(rotation[1]);
+    mesh.rotation.z = Math.degToRad(rotation[2]);
+    mesh.updateMatrixWorld?.();
 }
 

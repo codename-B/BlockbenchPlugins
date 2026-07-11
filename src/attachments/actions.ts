@@ -9,6 +9,13 @@ import { VS_Shape } from '../vs_shape_def';
 import { cleanJSONString } from '../util/json';
 import { processImportedAttachments } from './post_import';
 import { mergeBBModel, mergeVSAttachment } from './importer';
+import { IMPORT_SETTLE_DELAY, QUICK_MESSAGE_DURATION } from './constants';
+
+const DEBUG = false;
+
+function logDebug(message: string, ...args: any[]) {
+    if (DEBUG) console.log(message, ...args);
+}
 
 interface ImportActionConfig {
     id: string;
@@ -43,7 +50,8 @@ function createImportAction(config: ImportActionConfig) {
             }, function(files) {
                 if (!files || !files.length) return;
 
-                Undo.initEdit({ outliner: true });
+                const fileName = files[0]?.name || 'attachment';
+                Undo.initEdit({ outliner: true }, `Import attachment: ${fileName}`);
 
                 const elementsBefore = new Set([...Group.all, ...Cube.all]);
 
@@ -53,36 +61,48 @@ function createImportAction(config: ImportActionConfig) {
                         const model = autoParseJSON(cleanedContent);
 
                         if (!model || typeof model !== 'object') {
-                            console.error(`[${config.logPrefix}] Invalid model data in file:`, file.path);
-                            Blockbench.showQuickMessage(`Failed to import ${file.name}: Invalid JSON structure`, 3000);
+                            if (DEBUG) console.error(`[${config.logPrefix}] Invalid model data in file:`, file.path);
+                            Blockbench.showQuickMessage(`Failed to import ${file.name}: Invalid JSON structure`, QUICK_MESSAGE_DURATION);
                             return;
                         }
 
                         if (model.animations && Array.isArray(model.animations) && model.animations.length > 0) {
-                            console.log(`[${config.logPrefix}] Skipping`, model.animations.length, 'animations from attachment file');
+                            logDebug(`[${config.logPrefix}] Skipping`, model.animations.length, 'animations from attachment file');
                             delete model.animations;
                         }
 
                         config.mergeFn(model, file.path);
 
                     } catch (err) {
-                        console.error(`[${config.logPrefix}] Error importing file:`, file.path, err);
-                        Blockbench.showQuickMessage(`Failed to import ${file.name}: ${err.message || err}`, 3000);
+                        if (DEBUG) console.error(`[${config.logPrefix}] Error importing file:`, file.path, err);
+                        const errorMsg = err instanceof Error ? err.message : String(err);
+                        Blockbench.showQuickMessage(`Failed to import ${file.name}: ${errorMsg}`, QUICK_MESSAGE_DURATION);
                     }
                 });
 
                 const currentProject = Project;
+                // Store first model for preview dialog
+                let firstModel: any = null;
+                if (files.length > 0) {
+                    try {
+                        const cleanedContent = cleanJSONString(files[0].content as string);
+                        firstModel = autoParseJSON(cleanedContent);
+                    } catch (e) {
+                        if (DEBUG) console.warn(`[${config.logPrefix}] Could not parse model for preview:`, e);
+                    }
+                }
+                
                 // WORKAROUND: Use a timeout to wait for Blockbench's internal processes to complete.
                 // After an import, the outliner and other project data are not updated instantaneously.
                 // Running processImportedAttachments immediately would mean it can't find the new elements.
                 // This delay gives Blockbench time to settle before we run our post-processing logic.
                 setTimeout(async () => {
                     if (!currentProject || Project !== currentProject) {
-                        console.warn(`[${config.logPrefix}] Project changed or closed, skipping post-import processing`);
+                        if (DEBUG) console.warn(`[${config.logPrefix}] Project changed or closed, skipping post-import processing`);
                         return;
                     }
-                    await processImportedAttachments(elementsBefore, files[0].path, config.logPrefix);
-                }, 100);
+                    await processImportedAttachments(elementsBefore, files[0].path, config.logPrefix, firstModel);
+                }, IMPORT_SETTLE_DELAY);
             });
         }
     });

@@ -14,6 +14,14 @@ export const VS_GROUP_PROPS = [
         default: '',
         label: "Step Parent",
         exposed: true,
+        inputs: {
+            element_panel: {
+                input: {
+                    label: 'Step Parent',
+                    type: 'text'
+                }
+            }
+        },
         onChange() {
             Canvas.updateAllBones();
             Canvas.updateAllPositions();
@@ -70,6 +78,14 @@ export const VS_CUBE_PROPS = [
         default: '',
         label: "Step Parent",
         exposed: true,
+        inputs: {
+            element_panel: {
+                input: {
+                    label: 'Step Parent',
+                    type: 'text'
+                }
+            }
+        },
         onChange() {
             Canvas.updateAllBones();
             Canvas.updateAllPositions();
@@ -118,12 +134,31 @@ export const VS_CUBE_PROPS = [
         default: -1,
         label: "Render Pass",
         exposed: true,
+        options: {
+            '-1': 'Default',
+            '0': 'Opaque',
+            '1': 'OpaqueNoCull',
+            '2': 'BlendNoCull',
+            '3': 'Transparent',
+            '4': 'Liquid',
+            '5': 'TopSoil',
+            '6': 'Meta',
+        },
         inputs: {
             element_panel: {
                 input: {
                     label: 'Render Pass',
-                    type: 'number',
-                    step: 1
+                    type: 'select',
+                    options: {
+                        '-1': 'Default',
+                        '0': 'Opaque',
+                        '1': 'OpaqueNoCull',
+                        '2': 'BlendNoCull',
+                        '3': 'Transparent',
+                        '4': 'Liquid',
+                        '5': 'TopSoil',
+                        '6': 'Meta',
+                    }
                 }
             }
         },
@@ -140,6 +175,26 @@ export const VS_CUBE_PROPS = [
                 }
             }
         },
+    }),
+    new Property(Cube, "number", "unwrapMode", {
+        default: 0,
+        label: "Unwrap Mode",
+        exposed: false,
+    }),
+    new Property(Cube, "boolean", "autoUnwrap", {
+        default: false,
+        label: "Auto Unwrap",
+        exposed: false,
+    }),
+    new Property(Cube, "boolean", "disableRandomDrawOffset", {
+        default: false,
+        label: "Disable Random Draw Offset",
+        exposed: false,
+    }),
+    new Property(Cube, "number", "unwrapRotation", {
+        default: 0,
+        label: "Unwrap Rotation",
+        exposed: false,
     }),
 ];
 
@@ -203,13 +258,25 @@ export const VS_TEXTURE_PROPS = [
     }),
 ];
 
+export const VS_LOCATOR_PROPS = [
+    new Property(Locator, "number", "rotationX", { default: 0 }),
+    new Property(Locator, "number", "rotationY", { default: 0 }),
+    new Property(Locator, "number", "rotationZ", { default: 0 }),
+];
+
 export const VS_FACE_PROPS = [
-    new Property(Face, "number", "glow"),
-    new Property(Face, "number", "reflectiveMode"),
-    // @ts-expect-error: vector4 is missing in blockbench types here for some reason
-    new Property(Face, "vector4", "windMode"),
-    // @ts-expect-error: vector4 is missing in blockbench types here for some reason
-    new Property(Face, "vector4", "windData"),
+    // @ts-expect-error: CubeFace is not in blockbench types for Property
+    new Property(CubeFace, "number", "glow"),
+    // @ts-expect-error: CubeFace is not in blockbench types for Property
+    new Property(CubeFace, "number", "reflectiveMode"),
+    // @ts-expect-error: CubeFace is not in blockbench types for Property
+    new Property(CubeFace, "array", "windMode"),
+    // @ts-expect-error: CubeFace is not in blockbench types for Property
+    new Property(CubeFace, "array", "windData"),
+    // @ts-expect-error: CubeFace is not in blockbench types for Property
+    new Property(CubeFace, "boolean", "autoUv", { default: false }),
+    // @ts-expect-error: CubeFace is not in blockbench types for Property
+    new Property(CubeFace, "boolean", "snapUv", { default: false }),
 ];
 
 /**
@@ -221,6 +288,8 @@ declare global {
         reflectiveMode?: VS_ReflectiveMode;
         windMode?: [number, number, number, number];
         windData?: [number, number, number, number];
+        autoUv?: boolean;
+        snapUv?: boolean;
     }
 
     interface Texture {
@@ -249,6 +318,16 @@ declare global {
         gradientShade?: boolean;
         renderPass?: number;
         seasonColorMap?: string;
+        unwrapMode?: number;
+        autoUnwrap?: boolean;
+        disableRandomDrawOffset?: boolean;
+        unwrapRotation?: number;
         backdrop?: boolean;
+    }
+
+    interface Locator {
+        rotationX?: number;
+        rotationY?: number;
+        rotationZ?: number;
     }
 }

@@ -13,13 +13,17 @@ import "./actions";
 // Properties
 import "./property";
 
-// Mods
+// Mods (order matters — these must load before panels)
 import "./mods/boneAnimatorMod";
 import "./mods/formatMod";
 import "./mods/settingsMod";
 import "./mods/legacyFormatConverterMod";
 import "./mods/nodePreviewControllerMod";
 import "./mods/attachmentsMod";
+import "./mods/ik/index";
+
+// Panels (loaded after mods to avoid blocking critical format registration)
+import "./panels/vs_face_panel";
 
 BBPlugin.register(PACKAGE.name, {
     title: PACKAGE.title,
@@ -40,9 +44,9 @@ BBPlugin.register(PACKAGE.name, {
         events.UNLOAD.dispatch();
     },
     oninstall() {
-		events.INSTALL.dispatch();
-	},
-	onuninstall() {
-		events.UNINSTALL.dispatch();
-	},
+        events.INSTALL.dispatch();
+    },
+    onuninstall() {
+        events.UNINSTALL.dispatch();
+    },
 });

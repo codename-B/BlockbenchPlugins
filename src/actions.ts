@@ -22,28 +22,28 @@ const export_action = createAction(`${PACKAGE.name}:export_vs`, {
             throw new Error("No project loaded during export");
         }
 
-        // Use Blockbench's file save dialog
+        // Use Blockbench's file save dialog with custom_writer to avoid
+        // writing empty content before the actual data is ready
         Blockbench.export({
             name: Project.name,
             type: 'json',
             extensions: ['json'],
             savetype: 'text',
-            content: ''  // We'll save manually after getting the path
-        }, (exportPath) => {
-            // This callback receives the path where the user wants to save
-            if (!exportPath) return;
-
-            // Get the export directory
-            const exportDir = path.dirname(exportPath);
-
-            // Call ex() with the export directory
-            const data = ex({ path: exportPath, exportDir: exportDir });
-
-            // Save the JSON file
-            const jsonContent = autoStringify(data);
-            fs.writeFileSync(exportPath, jsonContent);
-
-            Blockbench.showQuickMessage('Model and textures exported successfully');
+            custom_writer: (_content, exportPath) => {
+                try {
+                    const exportDir = path.dirname(exportPath);
+                    const data = ex({ path: exportPath, exportDir: exportDir });
+                    const jsonContent = autoStringify(data);
+                    fs.writeFileSync(exportPath, jsonContent);
+                    Blockbench.showQuickMessage('Model and textures exported successfully');
+                } catch (e) {
+                    console.error('[VS Export] Export failed:', e);
+                    Blockbench.showMessageBox({
+                        title: 'VS Export Error',
+                        message: `Export failed: ${e instanceof Error ? e.message : String(e)}`
+                    });
+                }
+            }
         });
     }
 });

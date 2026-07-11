@@ -1,23 +1,30 @@
-
 import { inferClothingSlotFromPath } from './presets';
 import { showClothingSlotDialog } from './dialogs';
 import { findAllGroupsByName, findGroupByName, stripNumericSuffix, collectGroupsDepthFirst, isDescendantOf } from '../util/outliner';
-
+import { QUICK_MESSAGE_DURATION } from './constants';
+import { markAsRecentlyImported } from './panel';
 
 const DEBUG = false;
 
+function logDebug(message: string, ...args: any[]) {
+    if (DEBUG) console.log(message, ...args);
+}
+
+function getGroupPath(group: Group): string {
+    const parts: string[] = [];
+    let current: any = group;
+    while (current && current instanceof Group) {
+        parts.unshift(current.name || 'Unnamed');
+        current = current.parent;
+    }
+    return parts.join(' > ') || group.name || 'Unknown';
+}
+
 /**
- * Finds a group in the existing model that matches the given clothing slot.
- * Prioritizes groups that:
- * 1. Have the same clothing slot AND same name (case-insensitive)
- * 2. Have the same clothing slot (any name)
- * @param clothingSlot The clothing slot to search for
- * @param groupName Optional name to help prioritize matches
- * @param existingElements Elements that existed before import (to exclude new elements)
- * @returns The best matching group, or null if none found
+ * Finds a matching group in the existing model based on clothing slot and optional name.
  */
 function findBestMatchingGroupBySlot(clothingSlot: string, groupName: string | null, existingElements: Set<any>): Group | null {
-    if (!clothingSlot || clothingSlot.trim() === '') return null;
+    if (!clothingSlot || !clothingSlot.trim()) return null;
 
     const normalizedSlot = clothingSlot.trim().toLowerCase();
     const normalizedName = groupName ? groupName.trim().toLowerCase() : '';
@@ -31,22 +38,16 @@ function findBestMatchingGroupBySlot(clothingSlot: string, groupName: string | n
                 const elemSlot = (element.clothingSlot || '').trim().toLowerCase();
 
                 if (elemSlot === normalizedSlot) {
-                    // This group has matching clothing slot
                     if (normalizedName && (element.name || '').trim().toLowerCase() === normalizedName) {
-                        // Perfect match: same slot AND same name
                         exactNameMatch = element;
-                        return; // Stop searching, we found the best possible match
+                        return;
                     }
-                    if (!bestMatch) {
-                        // First match with this slot
-                        bestMatch = element;
-                    }
+                    if (!bestMatch) bestMatch = element;
                 }
             }
-
             if (element.children && element.children.length > 0) {
                 search(element.children);
-                if (exactNameMatch) return; // Early exit if we found exact match
+                if (exactNameMatch) return;
             }
         }
     }
@@ -56,180 +57,230 @@ function findBestMatchingGroupBySlot(clothingSlot: string, groupName: string | n
 }
 
 /**
- * Performs post-import processing on newly added elements to automate project organization.
- * The process runs in a specific order:
- * 1. **Smart Clothing Slot Matching:** Matches top-level imported groups to existing groups with same clothing slot.
- * 2. **Re-parenting:** Moves elements under their designated parent based on the `stepParentName` property.
- * 3. **Merge Duplicates:** Merges groups that were duplicated on import (e.g., `head2` into `head`).
- * 4. **Apply Clothing Slot:** Shows a dialog for user to select clothing slot, then applies it to all new elements.
- * This function is critical for a smooth user workflow, as it handles tedious manual organization tasks.
- * @param elementsBefore A `Set` of all elements that existed before the import.
- * @param filePath Path to the first imported file, used for clothing slot inference.
- * @param logPrefix A prefix for console log messages (e.g., "Import BB").
+ * Applies the selected clothing slot to all new elements.
  */
-export async function processImportedAttachments(elementsBefore: Set<any>, filePath: string, logPrefix: string) {
+function applyClothingSlot(newElements: any[], slot: string, logPrefix: string) {
+    if (DEBUG) console.log(`[${logPrefix}] Applying slot "${slot}" to ${newElements.length} elements.`);
+
+    const apply = (element: any) => {
+        if (element instanceof Group || element instanceof Cube) {
+            element.clothingSlot = slot;
+        }
+        if (element.children) {
+            element.children.forEach(apply);
+        }
+    };
+
+    // Filter for top-level new elements to avoid double processing
+    const newElementsSet = new Set(newElements);
+    const topLevel = newElements.filter(e => !e.parent || !newElementsSet.has(e.parent));
+
+    topLevel.forEach(element => {
+        apply(element);
+        markAsRecentlyImported(element);
+        element.children?.forEach((child: any) => markAsRecentlyImported(child));
+    });
+}
+
+/**
+ * Matches new groups to existing ones based on clothing slot.
+ */
+function smartMatchGroups(newElements: any[], newElementsSet: Set<any>, existingElements: Set<any>, logPrefix: string): number {
+    const topLevelGroups = newElements.filter(e => e instanceof Group && (!e.parent || !newElementsSet.has(e.parent))) as Group[];
+    let matchCount = 0;
+
+    if (DEBUG) console.log(`[${logPrefix}] Smart match: checking ${topLevelGroups.length} groups.`);
+
+    for (const newGroup of topLevelGroups) {
+        const slot = newGroup.clothingSlot?.trim();
+        if (!slot) continue;
+
+        const match = findBestMatchingGroupBySlot(slot, newGroup.name, existingElements);
+        if (match) {
+            if (DEBUG) console.log(`[${logPrefix}] Matched "${newGroup.name}" -> "${match.name}" (slot: ${slot})`);
+
+            [...newGroup.children].forEach(child => child.addTo(match));
+            matchCount++;
+
+            if (newGroup.children.length === 0) newGroup.remove();
+        }
+    }
+    return matchCount;
+}
+
+/**
+ * Merges new groups into existing groups with the same name (hierarchical merge).
+ */
+function mergeHierarchicalGroups(newElements: any[], newElementsSet: Set<any>, logPrefix: string) {
+    if (DEBUG) console.log(`[${logPrefix}] merging hierarchies.`);
+
+    const allNewGroups = collectGroupsDepthFirst(newElements.filter(e => e instanceof Group && newElementsSet.has(e)));
+
+    // Process deepest first
+    for (let i = allNewGroups.length - 1; i >= 0; i--) {
+        const newGroup = allNewGroups[i];
+        if (!newElementsSet.has(newGroup)) continue;
+
+        const matches = findAllGroupsByName(newGroup.name, Outliner.root).filter(g => !newElementsSet.has(g));
+
+        if (matches.length > 0) {
+            const target = matches[0]; // Take first match
+            if (DEBUG) console.log(`[${logPrefix}] Merging "${newGroup.name}" into "${target.name}"`);
+
+            [...newGroup.children].forEach(child => child.addTo(target));
+
+            if (newGroup.clothingSlot && !target.clothingSlot) {
+                target.clothingSlot = newGroup.clothingSlot;
+            }
+
+            if (newGroup.children.length === 0) {
+                newGroup.remove();
+                newElementsSet.delete(newGroup);
+            }
+        }
+    }
+}
+
+/**
+ * Merges groups that share the same clothing slot and have similar names.
+ */
+function mergeGroupsByCommonSlot(newElements: any[], newElementsSet: Set<any>, logPrefix: string) {
+    if (DEBUG) console.log(`[${logPrefix}] merging by common slot.`);
+
+    const bySlot = new Map<string, Group[]>();
+    newElements.forEach(e => {
+        if (e instanceof Group && newElementsSet.has(e) && e.clothingSlot) {
+            const slot = e.clothingSlot.trim();
+            if (!bySlot.has(slot)) bySlot.set(slot, []);
+            bySlot.get(slot)!.push(e);
+        }
+    });
+
+    bySlot.forEach((groups, slot) => {
+        if (groups.length < 2) return;
+
+        // Sort by name length to find the "base" group (shortest name)
+        groups.sort((a, b) => (a.name || '').length - (b.name || '').length);
+        const base = groups[0];
+        const baseName = (base.name || '').toLowerCase();
+
+        if (!baseName) return;
+
+        // Find groups extending the base name (e.g. "Hair" vs "HairOuter")
+        const targets = groups.slice(1).filter(g => (g.name || '').toLowerCase().startsWith(baseName));
+        if (targets.length === 0) return;
+
+        // Check if base exists in old model, otherwise use the new one as base
+        const existMatches = findAllGroupsByName(base.name, Outliner.root).filter(g => !newElementsSet.has(g));
+        const finalTarget = existMatches[0] || base;
+
+        if (finalTarget === base || !newElementsSet.has(finalTarget)) {
+            targets.forEach(g => {
+                if (!newElementsSet.has(g)) return;
+
+                if (DEBUG) console.log(`[${logPrefix}] Merging "${g.name}" into "${finalTarget.name}" (slot: ${slot})`);
+                [...g.children].forEach(c => c.addTo(finalTarget));
+
+                if (g.children.length === 0) {
+                    g.remove();
+                    newElementsSet.delete(g);
+                }
+            });
+        }
+    });
+}
+
+/**
+ * Reparents elements based on their `stepParentName` property.
+ */
+function reparentByStepParent(newElements: any[], newElementsSet: Set<any>, logPrefix: string) {
+    if (DEBUG) console.log(`[${logPrefix}] reparenting by stepParent.`);
+
+    newElements.forEach(element => {
+        const stepParent = element.stepParentName?.trim();
+        if (!stepParent) return;
+
+        const matches = findAllGroupsByName(stepParent, Outliner.root);
+        let parent = matches.find(g => !newElementsSet.has(g));
+
+        if (!parent && matches.length === 0) {
+            parent = new Group({ name: stepParent }).addTo().init();
+            if (DEBUG) console.log(`[${logPrefix}] Created stepParent group: "${stepParent}"`);
+        }
+
+        if (parent && parent !== element && !isDescendantOf(parent, element)) {
+            element.addTo(parent);
+        }
+    });
+}
+
+/**
+ * Merges any duplicate groups in the model.
+ */
+function mergeDuplicateGroups(logPrefix: string) {
+    const toDelete: Group[] = [];
+    collectGroupsDepthFirst(Outliner.root).forEach(group => {
+        const name = group.name || '';
+        const base = stripNumericSuffix(name);
+
+        if (base !== name && base) {
+            const original = findGroupByName(base, Outliner.root);
+            if (original && original !== group) {
+                // Move children if safe
+                [...group.children].forEach(child => {
+                    if (child !== original && child.parent !== original && !isDescendantOf(original, child)) {
+                        child.addTo(original);
+                    }
+                });
+                toDelete.push(group);
+            }
+        }
+    });
+    toDelete.forEach(g => g.remove());
+}
+
+/**
+ * Main entry point: Organizes imported attachments.
+ */
+export async function processImportedAttachments(elementsBefore: Set<any>, filePath: string, logPrefix: string, model?: any) {
     const elementsAfter = new Set([...Group.all, ...Cube.all]);
     const newElements = [...elementsAfter].filter(e => !elementsBefore.has(e));
     const newElementsSet = new Set(newElements);
 
-    // Track matches for user feedback
-    const matchingTable: { imported: string; matchedTo: string; slot: string }[] = [];
+    // 1. User selects clothing slot
+    const inferred = inferClothingSlotFromPath(filePath);
+    const result = await showClothingSlotDialog(inferred, filePath, model);
+    const masterSlot = result.slot;
 
-    // STEP 1: Smart Clothing Slot Matching
-    // Find top-level groups from the import and try to match them to existing groups by clothing slot
-    const topLevelNewGroups = newElements.filter(element => {
-        if (!(element instanceof Group)) return false;
-        const parent = element.parent;
-        return !parent || !newElementsSet.has(parent);
-    }) as Group[];
-
-    if (DEBUG) console.log(`[${logPrefix}] Found ${topLevelNewGroups.length} top-level new groups for smart matching`);
-
-    topLevelNewGroups.forEach(newGroup => {
-        const clothingSlot = newGroup.clothingSlot?.trim();
-        if (!clothingSlot) return;
-
-        // Try to find a matching group in the existing model
-        const matchedGroup = findBestMatchingGroupBySlot(clothingSlot, newGroup.name, elementsBefore);
-
-        if (matchedGroup) {
-            // Move all children of newGroup to the matched group
-            const childrenToMove = [...newGroup.children];
-
-            if (DEBUG) console.log(`[${logPrefix}] Smart Match: "${newGroup.name}" (slot: ${clothingSlot}) -> "${matchedGroup.name}"`);
-
-            childrenToMove.forEach(child => {
-                try {
-                    child.addTo(matchedGroup);
-                } catch (e) {
-                    console.error(`[${logPrefix}] Failed to move "${child.name}" to matched group "${matchedGroup.name}":`, e);
-                }
-            });
-
-            // Track this match for display
-            matchingTable.push({
-                imported: newGroup.name || 'Unnamed',
-                matchedTo: matchedGroup.name || 'Unnamed',
-                slot: clothingSlot
-            });
-
-            // Remove the now-empty imported group
-            if (newGroup.children.length === 0) {
-                newGroup.remove();
-            }
-        }
-    });
-
-    // Display matching table if any matches were found
-    if (matchingTable.length > 0) {
-        console.log(`[${logPrefix}] Smart Matching Results:`);
-        console.table(matchingTable);
-        Blockbench.showQuickMessage(`Matched ${matchingTable.length} attachment group(s) to existing model`, 3000);
+    if (!masterSlot) {
+        if (DEBUG) console.log(`[${logPrefix}] Import cancelled.`);
+        newElements.forEach(e => e.remove());
+        Blockbench.showQuickMessage('Import cancelled', QUICK_MESSAGE_DURATION);
+        return;
     }
 
-    // STEP 2: Re-parenting based on stepParentName
-    if (DEBUG) console.log(`[${logPrefix}] Processing ${newElements.length} new elements for stepParent reparenting`);
-    newElements.forEach(element => {
-        const stepParentName = element.stepParentName?.trim();
-        if (stepParentName) {
-            const allMatches = findAllGroupsByName(stepParentName, Outliner.root);
+    // 2. Apply slot to new elements
+    applyClothingSlot(newElements, masterSlot, logPrefix);
 
-            let parentGroup = allMatches.find(g => !newElementsSet.has(g)) || null;
-
-            if (!parentGroup && allMatches.length === 0) {
-                parentGroup = new Group({ name: stepParentName }).addTo().init();
-                if (DEBUG) console.log(`[${logPrefix}] Created missing stepParent group: "${stepParentName}"`);
-            }
-
-            if (parentGroup && parentGroup !== element && !(element instanceof Group && isDescendantOf(parentGroup, element))) {
-                try {
-                    element.addTo(parentGroup);
-                    if (DEBUG) console.log(`[${logPrefix}] Reparented "${element.name}" under "${stepParentName}" in outliner (keeping stepParentName for mesh positioning)`);
-                } catch (e) {
-                    console.error(`[${logPrefix}] Failed to reparent "${element.name}" to "${stepParentName}":`, e);
-                }
-            }
-        }
-    });
-
-    // STEP 3: Merge Duplicates
-    const groupsToDelete: Group[] = [];
-    const updatedGroups = collectGroupsDepthFirst(Outliner.root);
-    updatedGroups.forEach(group => {
-        const gname = group.name || '';
-        const baseName = stripNumericSuffix(gname);
-        if (baseName !== gname && baseName) {
-            const originalGroup = findGroupByName(baseName, Outliner.root);
-            if (originalGroup && originalGroup !== group) {
-                [...group.children].forEach(child => {
-                    if (child === originalGroup || child.uuid === originalGroup.uuid) {
-                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - child "${child.name}" is the target group`);
-                        return;
-                    }
-                    if (child.parent === originalGroup) {
-                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - child "${child.name}" already under "${originalGroup.name}"`);
-                        return;
-                    }
-                    if (isDescendantOf(originalGroup, child)) {
-                        if (DEBUG) console.warn(`[${logPrefix}] Skipping move - "${originalGroup.name}" is descendant of "${child.name}"`);
-                        return;
-                    }
-                    try {
-                        child.addTo(originalGroup);
-                    } catch (e) {
-                        console.error(`[${logPrefix}] Failed to move "${child.name}" to "${originalGroup.name}":`, e);
-                    }
-                });
-                groupsToDelete.push(group);
-            }
-        }
-    });
-    groupsToDelete.forEach(group => group.remove());
-
-    // STEP 4: Apply Clothing Slot - Show dialog and apply user's selection
-    const inferredSlot = inferClothingSlotFromPath(filePath);
-    const masterClothingSlot = await showClothingSlotDialog(inferredSlot, filePath);
-
-    if (masterClothingSlot) {
-        if (DEBUG) console.log(`[${logPrefix}] Applying user-selected clothing slot "${masterClothingSlot}" to ${newElements.length} new elements.`);
-
-        function applySlotRecursive(element: any, slot: string) {
-            if (element instanceof Group || element instanceof Cube) {
-                if (!element.clothingSlot || element.clothingSlot.trim() === '') {
-                    element.clothingSlot = slot;
-                    if (DEBUG) console.log(`[${logPrefix}] Applied slot "${slot}" to ${element instanceof Group ? 'group' : 'cube'}: ${element.name}`);
-                }
-            }
-            if (element.children) {
-                element.children.forEach((child: any) => applySlotRecursive(child, slot));
-            }
-        }
-
-        const topLevelNewElements = newElements.filter(element => {
-            const parent = element.parent;
-            return !parent || !newElementsSet.has(parent);
-        });
-
-        if (DEBUG) console.log(`[${logPrefix}] Found ${topLevelNewElements.length} top-level new elements to process`);
-
-        topLevelNewElements.forEach(element => applySlotRecursive(element, masterClothingSlot));
-    } else {
-        // User cancelled - remove all imported elements to prevent orphaned attachments
-        if (DEBUG) console.log(`[${logPrefix}] User cancelled clothing slot selection, removing ${newElements.length} imported elements`);
-
-        // Remove all newly imported elements
-        newElements.forEach(element => {
-            try {
-                element.remove();
-            } catch (e) {
-                console.error(`[${logPrefix}] Failed to remove element "${element.name}":`, e);
-            }
-        });
-
-        Blockbench.showQuickMessage('Import cancelled - no elements added', 2000);
+    // 3. Smart Match: New groups -> Old groups with same slot
+    const matchCount = smartMatchGroups(newElements, newElementsSet, elementsBefore, logPrefix);
+    if (matchCount > 0) {
+        Blockbench.showQuickMessage(`Matched ${matchCount} groups`, QUICK_MESSAGE_DURATION);
     }
 
-    Undo.finishEdit('Import and parent attachment');
+    // 4. Hierarchical Match: New groups -> Old groups with same name/path
+    mergeHierarchicalGroups(newElements, newElementsSet, logPrefix);
+
+    // 5. Common Slot Match: "HairOuter" -> "Hair" if same slot
+    mergeGroupsByCommonSlot(newElements, newElementsSet, logPrefix);
+
+    // 6. Step Parent Reparenting
+    reparentByStepParent(newElements, newElementsSet, logPrefix);
+
+    // 7. Cleanup Duplicates
+    mergeDuplicateGroups(logPrefix);
+
+    Undo.finishEdit(`Import attachment: ${filePath.split(/[/\\]/).pop()}`);
     Canvas.updateAll();
-    updateSelection?.();
+    if (typeof updateSelection === 'function') updateSelection();
 }

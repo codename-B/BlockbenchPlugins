@@ -9,12 +9,13 @@ import {create_VS_element} from "./cube/factory";
  * @param node The Cube node to process.
  * @param accu The accumulator for the VS elements.
  * @param offset The position offset to apply.
+ * @param parent_from_override Absolute position of the parent's VS `from`.
  */
-export function process_cube(parent: Group | null, node: Cube, accu: Array<VS_Element>, offset: [number,number,number]) {
+export function process_cube(parent: Group | null, node: Cube, accu: Array<VS_Element>, offset: [number,number,number], parent_from_override?: [number, number, number]) {
     if(node.backdrop) {
         return;
     }
-    const parent_pos: [number,number,number] = parent ? parent.origin : [0, 0, 0];
+    const parent_pos: [number,number,number] = parent_from_override ? parent_from_override : (parent ? ((parent as any).vs_group_from ?? parent.origin) : [0, 0, 0]);
     const reduced_faces = process_faces(node.faces);
     const vsElement = create_VS_element(parent, node, parent_pos, offset, reduced_faces);
 
@@ -30,10 +31,18 @@ export function process_cube(parent: Group | null, node: Cube, accu: Array<VS_El
         }
 
         if (value !== undefined && value !== null && value !== '' && value !== false) {
-            if (prop_name === 'renderPass' && value === -1) {
+            // Coerce to number for numeric properties (select dropdowns may return strings)
+            const numValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'renderPass' && numValue === -1) {
                 continue;
             }
-            vsElement[prop_name] = value;
+            if (prop_name === 'unwrapMode' && numValue === 0) {
+                continue;
+            }
+            if (prop_name === 'unwrapRotation' && numValue === 0) {
+                continue;
+            }
+            vsElement[prop_name] = numValue;
         }
     }
     accu.push(vsElement);

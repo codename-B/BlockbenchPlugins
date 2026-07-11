@@ -3,7 +3,7 @@
   "name": "vs_plugin",
   "title": "Vintage Story Format Support",
   "description": "A Blockbench plugin that adds support for Vintage Story models",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "author": {
     "name": "Darkluke1111",
     "email": "darkluke1111@gmx.de",
@@ -20,6 +20,7 @@
     "url": "https://github.com/Darkluke1111/BlockbenchPlugins"
   },
   "devDependencies": {
+    "@types/json5": "^0.0.30",
     "@types/node": "^24.9.1",
     "blockbench-types": "https://github.com/SnaveSutit/blockbench-types.git",
     "esbuild": "0.27.0",
@@ -37,12 +38,13 @@
   },
   "scripts": {
     "gen_schema": "npx tsx src/buildtime_scripts/gen_schema.ts",
-    "build": "node ./esbuild.ts  --mode=prod",
-    "dev": "node ./esbuild.ts  --mode=dev",
+    "build": "npx tsx ./esbuild.ts  --mode=prod",
+    "dev": "npx tsx ./esbuild.ts  --mode=dev",
     "lint": "npx eslint .",
     "gen_type_docs": "npx typedoc ./src/vs_shape_def.ts"
   },
   "dependencies": {
-    "ajv": "^8.17.1"
+    "ajv": "^8.17.1",
+    "json5": "^2.2.3"
   }
 }

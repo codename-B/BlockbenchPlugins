@@ -1,39 +1,33 @@
 import { getActiveSlotNames } from './presets';
 
 export interface IAttachmentSection {
-    slot: string;
-    elements: (Group | Cube)[];
+  slot: string;
+  elements: (Group | Cube)[];
 }
 
 /**
- * Checks if a group is just a structural parent (only contains other attachments, no real content).
- * These should be filtered out from display since they're just pass-through parents.
- * IMPORTANT: Groups that themselves have a clothingSlot are NOT structural parents - they are the attachment root!
+ * Checks if a group is a structural parent (only contains attachments, no real content).
+ * Groups with a clothingSlot are NOT structural parents - they are attachment roots.
  */
 function isStructuralParentOnly(node: any): boolean {
-    if (!(node instanceof Group)) return false;
-    if (!node.children || node.children.length === 0) return false;
+  if (!(node instanceof Group)) return false;
+  if (!node.children || node.children.length === 0) return false;
 
-    // If this group itself has a clothingSlot, it's NOT a structural parent - it's the attachment root
-    if (node.clothingSlot && node.clothingSlot.trim() !== '') {
-        return false;
+  if (node.clothingSlot && node.clothingSlot.trim() !== '') {
+    return false;
+  }
+
+  const allChildrenAreAttachments = node.children.every((child: any) => {
+    if (child instanceof Cube) {
+      return child.clothingSlot && child.clothingSlot.trim() !== '';
     }
+    if (child instanceof Group) {
+      return (child.clothingSlot && child.clothingSlot.trim() !== '') || isStructuralParentOnly(child);
+    }
+    return false;
+  });
 
-    // Check if ALL children are attachments (have clothingSlot set)
-    // If so, this group is just a structural parent
-    const allChildrenAreAttachments = node.children.every((child: any) => {
-        if (child instanceof Cube) {
-            // Cubes with geometry are real content
-            return child.clothingSlot && child.clothingSlot.trim() !== '';
-        }
-        if (child instanceof Group) {
-            // Groups that are attachments or structural parents
-            return (child.clothingSlot && child.clothingSlot.trim() !== '') || isStructuralParentOnly(child);
-        }
-        return false;
-    });
-
-    return allChildrenAreAttachments;
+  return allChildrenAreAttachments;
 }
 
 /**
@@ -55,24 +49,32 @@ export function findAttachments(): IAttachmentSection[] {
   }
 
   function walk(node: any) {
-    // Check if this element has an explicit clothingSlot property
     if ((node instanceof Group || node instanceof Cube) && node.clothingSlot && node.clothingSlot.trim() !== '') {
-      // Skip structural parent groups that only contain other attachments
+      if (node instanceof Group) {
+        const parent = node.parent;
+        if (parent && parent instanceof Group) {
+          const parentSlot = (parent as any).clothingSlot;
+          if (parentSlot && parentSlot.trim() === node.clothingSlot.trim()) {
+            if (Array.isArray(node.children)) {
+              node.children.forEach(walk);
+            }
+            return;
+          }
+        }
+      }
+
       if (!isStructuralParentOnly(node)) {
         const bucket = getOrCreateBucket(node.clothingSlot);
         bucket.elements.push(node);
       }
     }
 
-    // Always descend to find nested clothing items
     if (Array.isArray(node.children)) {
       node.children.forEach(walk);
     }
   }
 
   (Outliner.root || []).forEach(walk);
-
-  // Sort results to have a consistent order
   results.sort((a, b) => a.slot.localeCompare(b.slot));
 
   return results;
@@ -87,7 +89,6 @@ export function getAttachments(): (Group | Cube)[] {
 }
 
 export function isAttachment(node: any): boolean {
-    if (!node) return false;
-    // Check if it has an explicit clothingSlot property
-    return (node instanceof Group || node instanceof Cube) && node.clothingSlot && node.clothingSlot.trim() !== '';
+  if (!node) return false;
+  return (node instanceof Group || node instanceof Cube) && node.clothingSlot && node.clothingSlot.trim() !== '';
 }
