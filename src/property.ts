@@ -381,17 +381,11 @@ export const VS_LOCATOR_PROPS = [
 ];
 
 export const VS_FACE_PROPS = [
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "number", "glow"),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "number", "reflectiveMode"),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "array", "windMode"),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "array", "windData"),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "boolean", "autoUv", { default: false }),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "boolean", "snapUv", { default: false }),
 ];
 

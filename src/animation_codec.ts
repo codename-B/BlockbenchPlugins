@@ -22,7 +22,6 @@ import { create_animation } from "./import_animation";
 import { VS_Animation, VS_AnimationLibrary } from "./vs_shape_def";
 import { parse_model_location, basename_no_ext } from "./animation_library_paths";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
 
 // Remembers each loaded library file's optional `code`/`name` so re-saving preserves them

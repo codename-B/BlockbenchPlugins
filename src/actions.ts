@@ -6,9 +6,7 @@ import { is_backdrop_project } from "./util/misc";
 import { codecVS } from "./codec";
 import { ex } from "./export";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
 
 const export_action = createAction(`${PACKAGE.name}:export_vs`, {

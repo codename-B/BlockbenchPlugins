@@ -13,7 +13,6 @@
 
 import { parse_model_location } from "./animation_library_paths";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
 
 const SOUND_EXTENSIONS = ['.ogg', '.wav', '.mp3'];

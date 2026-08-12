@@ -1,6 +1,4 @@
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
 
 import { events } from "./util/events";

@@ -12,7 +12,6 @@
 
 import { parse_model_location } from "./animation_library_paths";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
 
 /** Effect codes already resolved this session: code -> file path, or null when unresolvable. */

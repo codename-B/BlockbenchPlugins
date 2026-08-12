@@ -1,9 +1,7 @@
 import { collect_tree_data, flatten } from "./util/element_tree";
 import { VS_Element } from "./vs_shape_def";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
 
 /**

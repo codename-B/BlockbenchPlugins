@@ -7,7 +7,6 @@ import { load_back_drop_shape } from "./util/misc";
 import { reference_to_candidate_paths } from "./animation_library_paths";
 import { vsAnimationCodec } from "./animation_codec";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
 
 export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {

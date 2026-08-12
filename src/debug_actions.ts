@@ -3,9 +3,7 @@ import * as PACKAGE from "../package.json";
 import { is_vs_project } from "./util";
 import JSON5 from "json5";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
 
 

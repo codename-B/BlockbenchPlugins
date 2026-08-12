@@ -5,9 +5,7 @@ import { VS_PROJECT_PROPS } from "./property";
 import { export_textures, resolveTextureLocation } from "./export_textures";
 import { path_to_reference } from "./animation_library_paths";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
 
 declare var Settings: any;

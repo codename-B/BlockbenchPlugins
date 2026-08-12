@@ -78,18 +78,14 @@ function computeWindData(cube: Cube, direction: string): [number, number, number
 
     for (let i = 0; i < 4; i++) {
         const pos = vertices[i];
-        // @ts-expect-error: THREE is global in Blockbench
         const localPos = new THREE.Vector3(
             pos[0] - cube.origin[0],
             pos[1] - cube.origin[1],
             pos[2] - cube.origin[2]
         );
 
-        // @ts-expect-error: mesh access
         if (cube.mesh) {
-            // @ts-expect-error: mesh access
             cube.mesh.updateMatrixWorld();
-            // @ts-expect-error: mesh access
             const worldPos = cube.mesh.localToWorld(localPos);
             result[i] = Math.trunc(worldPos.y / 16);
         } else {
@@ -104,11 +100,8 @@ let vertexDot: any = null;
 
 function createVertexDot() {
     if (vertexDot) return;
-    // @ts-expect-error: THREE is global in Blockbench
     const geo = new THREE.SphereGeometry(0.5, 8, 8);
-    // @ts-expect-error: THREE is global in Blockbench
     const mat = new THREE.MeshBasicMaterial({ color: 0xff4444, depthTest: false, transparent: true, opacity: 0.9 });
-    // @ts-expect-error: THREE is global in Blockbench
     vertexDot = new THREE.Mesh(geo, mat);
     vertexDot.renderOrder = 999;
     vertexDot.visible = false;
@@ -120,18 +113,14 @@ function showVertexDot(cube: Cube, direction: string, vertexIndex: number) {
     const pos = vertices[vertexIndex];
     if (!pos) return;
 
-    // @ts-expect-error: THREE is global in Blockbench
     const localPos = new THREE.Vector3(
         pos[0] - cube.origin[0],
         pos[1] - cube.origin[1],
         pos[2] - cube.origin[2]
     );
 
-    // @ts-expect-error: mesh access
     if (cube.mesh) {
-        // @ts-expect-error: mesh access
         cube.mesh.updateMatrixWorld();
-        // @ts-expect-error: mesh access
         const worldPos = cube.mesh.localToWorld(localPos);
         vertexDot.position.copy(worldPos);
     } else {

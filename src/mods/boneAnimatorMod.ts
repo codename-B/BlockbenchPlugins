@@ -2,7 +2,6 @@ import { createBlockbenchMod } from "../util/moddingTools";
 import * as PACKAGE from "../../package.json";
 import { is_vs_project } from "../util";
 
-// @ts-expect-error: THREE is global in Blockbench
 declare const THREE: typeof import('three');
 
 /**
