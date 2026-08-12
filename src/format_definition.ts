@@ -43,7 +43,8 @@ export function create_format(): ModelFormat {
         display_mode: false, // Only some Minecraft Skin stuff it seems
         animation_mode: true,
         pose_mode: false,
-        animation_controllers: true,
+        animation_controllers: false, // VS has no animation-controller concept
+
         box_uv_float_size: false,
         java_cube_shading_properties: false,
         cullfaces: false, // Not sure if Vintage Story supports this
