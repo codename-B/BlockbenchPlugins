@@ -336,12 +336,23 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
     // @ts-expect-error: custom property from import
     const storedOnAnimationEnd = animation.vs_onAnimationEnd;
 
+    // Map the Blockbench loop mode to onAnimationEnd. A stored value from import is only kept
+    // while it still agrees with the current loop mode (it can be a superset, e.g. EaseOut maps
+    // to 'once'); once the user changes the loop mode in Blockbench, the loop mode wins.
+    const loopToEnd: Record<string, string[]> = {
+        loop: ["Repeat"],
+        hold: ["Hold"],
+        once: ["Stop", "EaseOut"],
+    };
+    const validEnds = loopToEnd[animation.loop] ?? loopToEnd.once;
+    const onAnimationEnd = validEnds.includes(storedOnAnimationEnd) ? storedOnAnimationEnd : validEnds[0];
+
     const vsAnimation : VS_Animation = {
         name: animation.name,
         code: storedCode || animation.name.toLowerCase().replace(/ /g, ''),
         quantityframes: get_frame_quantity(animation, keyframes),
         onActivityStopped: storedOnActivityStopped || "EaseOut",
-        onAnimationEnd: storedOnAnimationEnd || (animation.loop === 'loop' ? "Repeat" : "Hold"),
+        onAnimationEnd,
         keyframes: Object.values(keyframes).sort((a, b) => a.frame - b.frame)
     };
 

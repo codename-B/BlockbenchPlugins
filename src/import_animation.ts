@@ -12,7 +12,7 @@ export function create_animation(vsAnimation: VS_Animation): _Animation {
     const animation = ((new Animation({
         //@ts-expect-error: Blockbench overwrites libdom's Animation type with its own Animation Class, but TypeScript doesn't include a way to overwrite UMD global types.
         name: vsAnimation.name,
-        loop: isLooping ? 'loop' : 'once',
+        loop: isLooping ? 'loop' : (vsAnimation.onAnimationEnd === 'Hold' ? 'hold' : 'once'),
         length: animationLength,
         snapping: FPS
     }) as unknown) as _Animation).add();
