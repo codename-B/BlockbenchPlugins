@@ -52,6 +52,30 @@ function registerOptionalInternalProperty(
     });
 }
 
+function registerStepParentTransformProperties(targetClass: any) {
+    registerOptionalInternalProperty(
+        targetClass,
+        'boolean',
+        'vs_step_parent_local',
+        value => value === true
+    );
+    registerOptionalInternalProperty(
+        targetClass,
+        'boolean',
+        'vs_has_step_parent_transform',
+        value => value === true
+    );
+
+    for (const name of ['vs_step_parent_origin', 'vs_step_parent_rotation']) {
+        registerOptionalInternalProperty(
+            targetClass,
+            'vector',
+            name,
+            (value, container) => container?.vs_has_step_parent_transform === true && isFiniteVector(value, 3)
+        );
+    }
+}
+
 const PALETTE_SLOT_OPTIONS = {
     '0': '0 - Inherit / Default',
     '1': '1',
@@ -147,6 +171,10 @@ new Property(Group, "string", "clothingSlot", {
 });
 
 new Property(Group, "boolean", "backdrop");
+
+// Blockbench-only attachment round-trip metadata. The boolean flags gate the
+// vector values so their default [0, 0, 0] cannot be mistaken for authored data.
+registerStepParentTransformProperties(Group);
 
 // Internal VS round-trip values. These stay out of VS_GROUP_PROPS so they are
 // saved in .bbmodel projects without being emitted as Vintage Story JSON keys.
@@ -325,6 +353,7 @@ new Property(Cube, "string", "clothingSlot", {
 });
 
 new Property(Cube, "boolean", "backdrop");
+registerStepParentTransformProperties(Cube);
 
 registerOptionalInternalProperty(Cube, 'boolean', 'vs_has_rotation_origin', value => value === true);
 registerOptionalInternalProperty(Cube, 'vector2', 'vs_uv', value => isFiniteVector(value, 2));
@@ -397,6 +426,10 @@ declare global {
         paletteSlot?: number;
         clothingSlot?: string;
         backdrop?: boolean;
+        vs_step_parent_local?: boolean;
+        vs_has_step_parent_transform?: boolean;
+        vs_step_parent_origin?: [number, number, number];
+        vs_step_parent_rotation?: [number, number, number];
         vs_group_from?: [number, number, number];
         vs_group_to?: [number, number, number];
         vs_has_rotation_origin?: boolean;
@@ -417,6 +450,10 @@ declare global {
         disableRandomDrawOffset?: boolean;
         unwrapRotation?: number;
         backdrop?: boolean;
+        vs_step_parent_local?: boolean;
+        vs_has_step_parent_transform?: boolean;
+        vs_step_parent_origin?: [number, number, number];
+        vs_step_parent_rotation?: [number, number, number];
         vs_has_rotation_origin?: boolean;
         vs_uv?: [number, number];
     }

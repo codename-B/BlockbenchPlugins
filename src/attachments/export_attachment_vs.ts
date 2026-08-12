@@ -1,12 +1,12 @@
 import { getActiveSlotNames } from './presets';
-import { traverse } from '../export_model/traverse';
 import * as props from "../property";
 import * as util from '../util';
 import { VS_Element } from '../vs_shape_def';
 import { QUICK_MESSAGE_DURATION } from './constants';
-import { process_group } from '../export_model/group';
 import { process_cube } from '../export_model/cube';
 import { visit_tree } from '../util/element_tree';
+import { composeEulerXYZ, rebaseAttachmentRoot } from './attachment_transform';
+import type { AttachmentElementFrame, StepParentFrame, Vector3Tuple } from './attachment_transform';
 
 const fs = requireNativeModule('fs');
 
@@ -14,6 +14,88 @@ const DEBUG = false; // Enable debug to see what's being exported
 
 function logDebug(message: string, ...args: any[]) {
     if (DEBUG) console.log(message, ...args);
+}
+
+function isFiniteVector3(value: unknown): value is Vector3Tuple {
+    return Array.isArray(value)
+        && value.length === 3
+        && value.every(component => typeof component === 'number' && Number.isFinite(component));
+}
+
+function getElementBindRotation(element: Group | Cube): Vector3Tuple {
+    const chain: Vector3Tuple[] = [];
+    let current: any = element;
+    while (current instanceof Group || current instanceof Cube) {
+        chain.unshift([...(current.rotation || [0, 0, 0])] as Vector3Tuple);
+        current = current.parent;
+    }
+    return composeEulerXYZ(chain);
+}
+
+function getSocketFrom(group: Group): Vector3Tuple {
+    const storedFrom = (group as any).vs_group_from;
+    if (isFiniteVector3(storedFrom)) return [...storedFrom];
+    const geoChild = group.children.find(child =>
+        child instanceof Cube && child.name === `${group.name}_geo`
+    ) as Cube | undefined;
+    return [...(geoChild?.from || group.origin)] as Vector3Tuple;
+}
+
+function isInAttachmentSubtree(candidate: Group, attachmentRoot: Group | Cube): boolean {
+    let current: any = candidate;
+    while (current && current instanceof Group) {
+        if (current === attachmentRoot) return true;
+        current = current.parent;
+    }
+    return false;
+}
+
+function resolveStepParentFrame(element: Group | Cube, stepParentName: string): StepParentFrame | null {
+    const attachmentSlot = element.clothingSlot?.trim();
+    const candidates = Group.all.filter((candidate: Group) => {
+        if (candidate === element || candidate.name !== stepParentName) return false;
+        if (isInAttachmentSubtree(candidate, element)) return false;
+        return true;
+    });
+    const target = candidates.find((candidate: Group) =>
+        !candidate.stepParentName?.trim()
+        && (!candidate.clothingSlot?.trim() || candidate.clothingSlot?.trim() !== attachmentSlot)
+    ) || candidates.find((candidate: Group) =>
+        !candidate.clothingSlot?.trim() || candidate.clothingSlot?.trim() !== attachmentSlot
+    ) || candidates[0];
+    if (target) {
+        // A live socket represents the hierarchy that the exported attachment
+        // will actually run under. Stored metadata is the standalone fallback.
+        return {
+            from: getSocketFrom(target),
+            rotation: getElementBindRotation(target),
+        };
+    }
+
+    if (
+        element.vs_has_step_parent_transform
+        && isFiniteVector3(element.vs_step_parent_origin)
+        && isFiniteVector3(element.vs_step_parent_rotation)
+    ) {
+        return {
+            from: [...element.vs_step_parent_origin],
+            rotation: [...element.vs_step_parent_rotation],
+        };
+    }
+
+    return null;
+}
+
+function getGroupFrom(group: Group): Vector3Tuple {
+    return isFiniteVector3(group.vs_group_from)
+        ? [...group.vs_group_from]
+        : [...group.origin] as Vector3Tuple;
+}
+
+function getGroupTo(group: Group): Vector3Tuple {
+    return isFiniteVector3(group.vs_group_to)
+        ? [...group.vs_group_to]
+        : [...group.origin] as Vector3Tuple;
 }
 
 /**
@@ -214,19 +296,24 @@ function process_attachment_group(
     accu: Array<VS_Element>,
     offset: [number, number, number],
     targetSlot: string,
-    stepParentName?: string | null
+    stepParentName?: string | null,
+    rootTransform?: AttachmentElementFrame
 ) {
     if (node.backdrop) {
         return;
     }
-    const parent_pos: [number, number, number] = parent ? parent.origin : [0, 0, 0];
-    const converted_rotation = node.rotation;
+    const parent_pos: [number, number, number] = parent ? getGroupFrom(parent) : [0, 0, 0];
+    const converted_rotation = parent === null && rootTransform ? rootTransform.rotation : node.rotation;
 
-    let from = util.vector_sub(node.origin, parent_pos);
-    let to = util.vector_sub(node.origin, parent_pos);
+    let from = util.vector_sub(getGroupFrom(node), parent_pos);
+    let to = util.vector_sub(getGroupTo(node), parent_pos);
     let rotationOrigin = util.vector_sub(node.origin, parent_pos);
 
-    if (parent === null) {
+    if (parent === null && rootTransform) {
+        from = [...rootTransform.from];
+        to = [...rootTransform.to];
+        rotationOrigin = [...rootTransform.rotationOrigin];
+    } else if (parent === null) {
         from = util.vector_add(from, offset);
         to = util.vector_add(to, offset);
         rotationOrigin = util.vector_add(rotationOrigin, offset);
@@ -237,9 +324,11 @@ function process_attachment_group(
         from: from,
         to: to,
         rotationOrigin: rotationOrigin,
+        ...(node.vs_uv ? { uv: node.vs_uv } : undefined),
         ...(converted_rotation[0] !== 0 && { rotationX: converted_rotation[0] }),
         ...(converted_rotation[1] !== 0 && { rotationY: converted_rotation[1] }),
         ...(converted_rotation[2] !== 0 && { rotationZ: converted_rotation[2] }),
+        ...(node.vs_zero_size_faces ? { faces: node.vs_zero_size_faces } : undefined),
         children: []
     };
 
@@ -251,6 +340,28 @@ function process_attachment_group(
         // Skip properties with default/empty values
         if (value !== undefined && value !== null && value !== '' && value !== false) {
             const exportedValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'paletteSlot' && exportedValue === 0) continue;
+            vsElement[prop_name] = exportedValue;
+        }
+    }
+
+    // Group-like VS elements may carry cube properties (for example shade,
+    // renderPass, or unwrapMode). Preserve the same payload as normal export.
+    for (const prop of props.VS_CUBE_PROPS) {
+        const prop_name = prop.name;
+        if (props.VS_GROUP_PROPS.some(groupProp => groupProp.name === prop_name)) continue;
+        const value = node[prop_name];
+        if (prop_name === 'shade') {
+            if (value !== undefined && value !== true) {
+                vsElement[prop_name] = value;
+            }
+            continue;
+        }
+        if (value !== undefined && value !== null && value !== '' && value !== false) {
+            const exportedValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'renderPass' && exportedValue === -1) continue;
+            if (prop_name === 'unwrapMode' && exportedValue === 0) continue;
+            if (prop_name === 'unwrapRotation' && exportedValue === 0) continue;
             if (prop_name === 'paletteSlot' && exportedValue === 0) continue;
             vsElement[prop_name] = exportedValue;
         }
@@ -273,15 +384,15 @@ function process_attachment_group(
     const filteredChildren = (node.children || []).filter((child: any) => {
         if (!(child instanceof Group || child instanceof Cube)) return false;
         const childSlot = (child as any).clothingSlot;
-        // Only include children with the matching slot - exclude everything else
-        const childHasMatchingSlot = childSlot && childSlot.trim() !== '' && childSlot.trim() === targetSlot.trim();
-        return childHasMatchingSlot;
+        // Empty means inherit from this attachment root. An explicit different
+        // slot is a real boundary and must not be exported with this attachment.
+        return !childSlot || childSlot.trim() === '' || childSlot.trim() === targetSlot.trim();
     });
 
     logDebug(`[VS Attachment Export] Filtered children of "${node.name}": ${filteredChildren.length} of ${node.children.length} match slot "${targetSlot}"`);
 
     // Recursively process filtered children (don't pass stepParentName - it's only for top-level elements)
-    traverseAttachment(node, filteredChildren, vsElement.children!, offset, targetSlot, undefined);
+    traverseAttachment(node, filteredChildren, vsElement.children!, offset, targetSlot, undefined, undefined);
 }
 
 /**
@@ -294,14 +405,22 @@ function process_attachment_group(
  * @param targetSlot The clothingSlot to filter by - only children with this slot or no slot are processed
  * @param stepParentName The step parent name to apply to top-level elements (null if not top-level)
  */
-function traverseAttachment(parent: Group | null, nodes: Array<OutlinerNode>, accu: Array<VS_Element>, offset: [number, number, number], targetSlot: string, stepParentName?: string | null) {
+function traverseAttachment(
+    parent: Group | null,
+    nodes: Array<OutlinerNode>,
+    accu: Array<VS_Element>,
+    offset: [number, number, number],
+    targetSlot: string,
+    stepParentName?: string | null,
+    rootTransform?: AttachmentElementFrame
+) {
     for (const node of nodes) {
         if (!node.export) continue;
 
         // Filter: ONLY process nodes with matching clothingSlot
         // Don't include nodes with no slot, as they might be base model elements
         const nodeSlot = (node as any).clothingSlot;
-        const hasMatchingSlot = nodeSlot && nodeSlot.trim() !== '' && nodeSlot.trim() === targetSlot.trim();
+        const hasMatchingSlot = !nodeSlot || nodeSlot.trim() === '' || nodeSlot.trim() === targetSlot.trim();
 
         // Skip nodes that don't have the matching slot
         if (!hasMatchingSlot) {
@@ -314,7 +433,7 @@ function traverseAttachment(parent: Group | null, nodes: Array<OutlinerNode>, ac
         const stepParentToUse = isTopLevel ? stepParentName : undefined;
 
         if (node instanceof Group) {
-            process_attachment_group(parent, node, accu, offset, targetSlot, stepParentToUse);
+            process_attachment_group(parent, node, accu, offset, targetSlot, stepParentToUse, rootTransform);
         } else if (node instanceof Cube) {
             // For cubes, we need to apply stepParentName manually since process_cube doesn't accept it
             // Save the original stepParentName to restore later
@@ -445,6 +564,7 @@ export function exportAttachmentsVS(selection: Group[]) {
 
     logDebug(`[VS Attachment Export] Filtered ${selection.length} elements to ${rootAttachments.length} root groups and ${orphanCubes.length} orphan cubes`);
 
+    let warnedMissingSocketTransform = false;
     try {
         // Process each root attachment group with its own relative offset
         rootAttachments.forEach(group => {
@@ -459,7 +579,7 @@ export function exportAttachmentsVS(selection: Group[]) {
 
                 // Walk up the parent chain to find the first parent with a different (or no) clothingSlot
                 // This should be the base model group that the attachment attaches to
-                while (currentParent && currentParent instanceof Group) {
+                while (!stepParentName && currentParent && currentParent instanceof Group) {
                     const parentClothingSlot = (currentParent as any).clothingSlot;
                     const parentHasDifferentSlot = !parentClothingSlot || parentClothingSlot.trim() === '' || parentClothingSlot !== groupClothingSlot;
 
@@ -490,24 +610,37 @@ export function exportAttachmentsVS(selection: Group[]) {
                 if (DEBUG) console.warn(`Could not determine a step-parent for attachment: ${group.name}`);
             }
 
-            // Find the parent group to make the attachment's position relative
-            const parentGroup = stepParentName ? Group.all.find((g: any) => g.name === stepParentName) : null;
-
-            // Default offset, same as in the main model exporter
             let offset: [number, number, number] = [0, 0, 0];
+            let rootTransform: AttachmentElementFrame | undefined;
 
-            if (parentGroup) {
-                // Adjust the offset by subtracting the parent's absolute position.
-                // This makes the attachment's root position relative to its parent.
-                offset = util.vector_sub(offset, parentGroup.origin);
-                logDebug(`[VS Attachment Export] Calculated offset for "${group.name}" relative to "${stepParentName}": [${offset.join(', ')}]`);
+            if (!group.vs_step_parent_local && stepParentName) {
+                const socketFrame = resolveStepParentFrame(group, stepParentName);
+                if (socketFrame) {
+                    rootTransform = rebaseAttachmentRoot({
+                        from: getGroupFrom(group),
+                        to: getGroupTo(group),
+                        rotationOrigin: [...group.origin] as Vector3Tuple,
+                        rotation: getElementBindRotation(group),
+                    }, socketFrame);
+                    logDebug(`[VS Attachment Export] Rebased "${group.name}" against "${stepParentName}": position [${rootTransform.rotationOrigin.join(', ')}], rotation [${rootTransform.rotation.join(', ')}]`);
+                } else {
+                    // Backward-compatible translation fallback for old standalone
+                    // source files. Rotation cannot be inferred without the actual
+                    // socket frame, so retain the authored rotation and warn.
+                    offset = util.vector_sub(offset, group.origin);
+                    console.warn(`[VS Attachment Export] No distinct socket or stored socket transform found for "${group.name}" -> "${stepParentName}". Preserving legacy rotation.`);
+                    if (!warnedMissingSocketTransform) {
+                        warnedMissingSocketTransform = true;
+                        Blockbench.showQuickMessage('Some legacy attachments have no stored socket transform; rotation was preserved as authored.', 5000);
+                    }
+                }
             }
 
             // Use filtered attachment traversal logic to process the attachment
             // We create a temporary array to hold the elements for this single attachment
             const attachmentElements: VS_Element[] = [];
             const groupClothingSlot = (group as any).clothingSlot || '';
-            traverseAttachment(null, [group], attachmentElements, offset, groupClothingSlot, stepParentName);
+            traverseAttachment(null, [group], attachmentElements, offset, groupClothingSlot, stepParentName, rootTransform);
 
             // Add the processed elements to the main elements array
             data.elements.push(...attachmentElements);
@@ -533,13 +666,14 @@ export function exportAttachmentsVS(selection: Group[]) {
             const orphanElements: VS_Element[] = [];
             orphanCubes.forEach(cube => {
                 // Determine stepParentName for this specific cube
-                let stepParentName: string | null = null;
+                let stepParentName: string | null = cube.stepParentName?.trim() || null;
                 const cubeSlot = (cube as any).clothingSlot || '';
                 let currentParent = cube.parent;
 
                 // Walk up the parent chain to find the first parent with a different (or no) clothingSlot
-                // This should be the immediate base model parent for this cube
-                while (currentParent && currentParent instanceof Group) {
+                // This should be the immediate base model parent for this cube.
+                // An authored stepParentName always wins.
+                while (!stepParentName && currentParent && currentParent instanceof Group) {
                     const parentClothingSlot = (currentParent as any).clothingSlot;
                     const parentHasDifferentSlot = !parentClothingSlot || parentClothingSlot.trim() === '' || parentClothingSlot !== cubeSlot;
 
@@ -559,15 +693,40 @@ export function exportAttachmentsVS(selection: Group[]) {
                 }
 
                 // Temporarily set stepParentName on the cube
-                const originalStepParent = (cube as any).stepParentName;
+                const originalStepParent = cube.stepParentName;
                 if (stepParentName && (!originalStepParent || originalStepParent.trim() === '')) {
-                    (cube as any).stepParentName = stepParentName;
+                    cube.stepParentName = stepParentName;
                 }
-                // Process the cube
-                process_cube(null, cube, orphanElements, [0, 0, 0]);
+                const cubeElements: VS_Element[] = [];
+                process_cube(null, cube, cubeElements, [0, 0, 0]);
+
+                const exportedCube = cubeElements[0];
+                if (exportedCube && cube.vs_step_parent_local !== true && stepParentName) {
+                    const socketFrame = resolveStepParentFrame(cube, stepParentName);
+                    if (socketFrame) {
+                        const rootTransform = rebaseAttachmentRoot({
+                            from: [...cube.from] as Vector3Tuple,
+                            to: [...cube.to] as Vector3Tuple,
+                            rotationOrigin: [...cube.origin] as Vector3Tuple,
+                            rotation: getElementBindRotation(cube),
+                        }, socketFrame);
+                        exportedCube.from = rootTransform.from;
+                        exportedCube.to = rootTransform.to;
+                        exportedCube.rotationOrigin = rootTransform.rotationOrigin;
+                        delete exportedCube.rotationX;
+                        delete exportedCube.rotationY;
+                        delete exportedCube.rotationZ;
+                        if (rootTransform.rotation[0] !== 0) exportedCube.rotationX = rootTransform.rotation[0];
+                        if (rootTransform.rotation[1] !== 0) exportedCube.rotationY = rootTransform.rotation[1];
+                        if (rootTransform.rotation[2] !== 0) exportedCube.rotationZ = rootTransform.rotation[2];
+                    } else {
+                        console.warn(`[VS Attachment Export] No distinct socket or stored socket transform found for cube "${cube.name}" -> "${stepParentName}"; preserving its model-space transform.`);
+                    }
+                }
+                orphanElements.push(...cubeElements);
                 // Restore original stepParentName
                 if (stepParentName) {
-                    (cube as any).stepParentName = originalStepParent;
+                    cube.stepParentName = originalStepParent;
                 }
             });
             data.elements.push(...orphanElements);
