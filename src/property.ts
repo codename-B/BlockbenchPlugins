@@ -1,4 +1,4 @@
-import { VS_EditorSettings, VS_ReflectiveMode } from "./vs_shape_def";
+import { VS_Direction, VS_EditorSettings, VS_Face, VS_ReflectiveMode } from "./vs_shape_def";
 
 export const VS_PROJECT_PROPS = [
     new Property(ModelProject, "string", "backDropShape", { exposed: false, }),
@@ -8,6 +8,49 @@ export const VS_PROJECT_PROPS = [
     new Property(ModelProject, "boolean", "singleTexture", { exposed: false, }),
     new Property(ModelProject, "boolean", "vsFormatConverted", { exposed: false, }),
 ];
+
+type InternalPropertyType = 'vector' | 'vector2' | 'object' | 'boolean';
+
+function isFiniteVector(value: unknown, length: 2 | 3): boolean {
+    return Array.isArray(value)
+        && value.length === length
+        && value.every(component => typeof component === 'number' && Number.isFinite(component));
+}
+
+function isNonEmptyRecord(value: unknown): boolean {
+    return value !== null
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && Object.keys(value).length > 0;
+}
+
+function registerOptionalInternalProperty(
+    targetClass: any,
+    type: InternalPropertyType,
+    name: string,
+    validate: (value: unknown, container?: any) => boolean,
+) {
+    return new Property(targetClass, type, name, {
+        exposed: false,
+        condition(instance: any) {
+            return validate(instance?.[name], instance);
+        },
+        reset(instance: any) {
+            delete instance[name];
+        },
+        merge(instance: any, data: any) {
+            const value = data?.[name];
+            if (!validate(value, data)) return;
+            if (Array.isArray(value)) {
+                instance[name] = value.slice();
+            } else if (value !== null && typeof value === 'object') {
+                instance[name] = structuredClone(value);
+            } else {
+                instance[name] = value;
+            }
+        },
+    });
+}
 
 export const VS_GROUP_PROPS = [
     new Property(Group, "string", "stepParentName", {
@@ -72,6 +115,14 @@ new Property(Group, "string", "clothingSlot", {
 });
 
 new Property(Group, "boolean", "backdrop");
+
+// Internal VS round-trip values. These stay out of VS_GROUP_PROPS so they are
+// saved in .bbmodel projects without being emitted as Vintage Story JSON keys.
+registerOptionalInternalProperty(Group, 'vector', 'vs_group_from', value => isFiniteVector(value, 3));
+registerOptionalInternalProperty(Group, 'vector', 'vs_group_to', value => isFiniteVector(value, 3));
+registerOptionalInternalProperty(Group, 'boolean', 'vs_has_rotation_origin', value => value === true);
+registerOptionalInternalProperty(Group, 'object', 'vs_zero_size_faces', isNonEmptyRecord);
+registerOptionalInternalProperty(Group, 'vector2', 'vs_uv', value => isFiniteVector(value, 2));
 
 export const VS_CUBE_PROPS = [
     new Property(Cube, "string", "stepParentName", {
@@ -242,6 +293,9 @@ new Property(Cube, "string", "clothingSlot", {
 
 new Property(Cube, "boolean", "backdrop");
 
+registerOptionalInternalProperty(Cube, 'boolean', 'vs_has_rotation_origin', value => value === true);
+registerOptionalInternalProperty(Cube, 'vector2', 'vs_uv', value => isFiniteVector(value, 2));
+
 export const VS_TEXTURE_PROPS = [
     new Property(Texture, "string", "textureLocation", {
         default: '',
@@ -309,6 +363,11 @@ declare global {
         stepParentName?: string;
         clothingSlot?: string;
         backdrop?: boolean;
+        vs_group_from?: [number, number, number];
+        vs_group_to?: [number, number, number];
+        vs_has_rotation_origin?: boolean;
+        vs_zero_size_faces?: Partial<Record<VS_Direction, VS_Face>>;
+        vs_uv?: [number, number];
     }
 
     interface Cube {
@@ -323,6 +382,8 @@ declare global {
         disableRandomDrawOffset?: boolean;
         unwrapRotation?: number;
         backdrop?: boolean;
+        vs_has_rotation_origin?: boolean;
+        vs_uv?: [number, number];
     }
 
     interface Locator {

@@ -27,22 +27,17 @@ export function process_group(parent: Group | null, object_space_pos: [number,nu
     // Store VS from/to in absolute BB coordinates for export round-trip.
     // Groups only have `origin` (= rotationOrigin), but VS elements can have
     // from/to that differ from rotationOrigin.
-    // @ts-expect-error: custom property for round-trip fidelity
     group.vs_group_from = absolute_from;
-    // @ts-expect-error: custom property for round-trip fidelity
     group.vs_group_to = absolute_to;
-    // @ts-expect-error: custom property for round-trip fidelity
     group.vs_has_rotation_origin = vsElement.rotationOrigin !== undefined;
 
     // Preserve faces on zero-size elements (from==to but with non-empty faces)
     if (vsElement.faces && Object.keys(vsElement.faces).length > 0 && util.vector_equals(vsElement.from, vsElement.to)) {
-        // @ts-expect-error: custom property for round-trip fidelity
         group.vs_zero_size_faces = vsElement.faces;
     }
 
     // Preserve element-level uv offset (Blockbench may not preserve uv_offset in per-face UV mode)
     if (vsElement.uv) {
-        // @ts-expect-error: custom property for round-trip fidelity
         group.vs_uv = vsElement.uv;
     }
 
