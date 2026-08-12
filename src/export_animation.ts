@@ -1,4 +1,5 @@
-import { VS_Animation, VS_AnimationKey, VS_AnimationLibrary, VS_AnimationParticle, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_AnimationLibrary, VS_AnimationParticle, VS_AnimationSound, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { sound_location_for_data_point } from "./animation_sounds";
 import * as util from "./util";
 import { is_backdrop_project } from "./util/misc";
 
@@ -292,6 +293,15 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
                         (keyframes[frame].particles = keyframes[frame].particles || []).push(particle);
                     });
                 }
+                if (kf.channel === 'sound') {
+                    kf.data_points.forEach(dp => {
+                        const location = sound_location_for_data_point(dp);
+                        if (!location) return;
+                        const frame = Math.round(kf.time * fps);
+                        keyframes[frame] = keyframes[frame] || { frame, elements: {} };
+                        (keyframes[frame].sounds = keyframes[frame].sounds || []).push({ location });
+                    });
+                }
             });
         }
     });
@@ -307,6 +317,9 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
         keyframe.elements = wrapped_elements;
         if (keyframe.particles) {
             keyframe.particles = keyframe.particles.map(p => new oneLiner(p) as unknown as VS_AnimationParticle);
+        }
+        if (keyframe.sounds) {
+            keyframe.sounds = keyframe.sounds.map(s => new oneLiner(s) as unknown as VS_AnimationSound);
         }
     }
 
@@ -448,7 +461,8 @@ function stable_keyframe_content(keyframe: VS_Keyframe): string {
     return JSON.stringify({
         elements: sort_nested_object(keyframe.elements),
         textures: keyframe.textures ? sort_nested_object(keyframe.textures) : undefined,
-        particles: keyframe.particles ? sort_nested_object(keyframe.particles) : undefined
+        particles: keyframe.particles ? sort_nested_object(keyframe.particles) : undefined,
+        sounds: keyframe.sounds ? sort_nested_object(keyframe.sounds) : undefined
     });
 }
 

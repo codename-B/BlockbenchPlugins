@@ -105,6 +105,28 @@ export interface VS_Keyframe {
     elements: Record<string, VS_AnimationKey>,
     textures?: Record<string, string>,
     particles?: Array<VS_AnimationParticle>,
+    sounds?: Array<VS_AnimationSound>,
+}
+
+/**
+ * A sound triggered on a keyframe. Mirrors the engine's `AnimationSound`, minus `frame` (which
+ * the containing keyframe supplies). Read by GlintMod; the base game ignores it, because stock VS
+ * only takes animation sounds from `AnimationMetaData` in entity JSON.
+ *
+ * Blockbench can only author `location`. The remaining fields are for hand-written shapes and are
+ * NOT preserved if the animation is re-exported from Blockbench.
+ */
+export interface VS_AnimationSound {
+    /** Sound asset location, e.g. "game:creature/hyena/growl" */
+    location: string,
+    /** Audible radius in blocks */
+    range?: number,
+    volume?: number,
+    pitch?: number,
+    /** 0..1 probability the sound plays when the frame is reached */
+    chance?: number,
+    /** Loop for as long as the animation runs, instead of firing once */
+    looping?: boolean,
 }
 
 /**

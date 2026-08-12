@@ -1,6 +1,7 @@
 import * as util from "./util";
 import { VS_Animation, VS_AnimationKey, VS_KeyFrameInterpolation } from "./vs_shape_def";
 import { particle_data_point } from "./animation_particles";
+import { sound_data_point } from "./animation_sounds";
 
 /**
  * Creates one Blockbench animation from a VS animation definition and returns it.
@@ -49,6 +50,14 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
                 channel: 'particle',
                 time: vsKeyframe.frame / FPS,
                 data_points: vsKeyframe.particles.map(p => particle_data_point(p.effect, p.atAttachmentPoint)),
+            });
+        }
+
+        if (vsKeyframe.sounds && vsKeyframe.sounds.length > 0) {
+            getEffectAnimator(animation).addKeyframe({
+                channel: 'sound',
+                time: vsKeyframe.frame / FPS,
+                data_points: vsKeyframe.sounds.map(s => sound_data_point(s.location)),
             });
         }
 
