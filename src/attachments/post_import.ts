@@ -340,14 +340,18 @@ function placeStepParentWrappers(newElements: any[], newElementsSet: Set<any>, l
         const worldRotation = getElementBindRotation(element);
         const liveSocketFrom = getSocketFrom(target);
         const liveSocketRotation = getElementBindRotation(target);
+        // Read into locals so the isFiniteVector3 guards narrow away the undefined, which they
+        // cannot do through a property access.
+        const storedFrom = element.vs_step_parent_origin;
+        const storedRotation = element.vs_step_parent_rotation;
         const hasStoredFrame = element.vs_has_step_parent_transform === true
-            && isFiniteVector3(element.vs_step_parent_origin)
-            && isFiniteVector3(element.vs_step_parent_rotation);
+            && isFiniteVector3(storedFrom)
+            && isFiniteVector3(storedRotation);
         const authoredSocketFrom = hasStoredFrame
-            ? [...element.vs_step_parent_origin] as Vector3Tuple
+            ? [...storedFrom] as Vector3Tuple
             : liveSocketFrom;
         const authoredSocketRotation = hasStoredFrame
-            ? [...element.vs_step_parent_rotation] as Vector3Tuple
+            ? [...storedRotation] as Vector3Tuple
             : liveSocketRotation;
         const localRotation = relativeEulerXYZ(worldRotation, authoredSocketRotation);
         const socketDelta: Vector3Tuple = [
