@@ -50,21 +50,20 @@ export function findAttachments(): IAttachmentSection[] {
 
   function walk(node: any) {
     if ((node instanceof Group || node instanceof Cube) && node.clothingSlot && node.clothingSlot.trim() !== '') {
-      if (node instanceof Group) {
-        const parent = node.parent;
-        if (parent && parent instanceof Group) {
-          const parentSlot = (parent as any).clothingSlot;
-          if (parentSlot && parentSlot.trim() === node.clothingSlot.trim()) {
-            if (Array.isArray(node.children)) {
-              node.children.forEach(walk);
-            }
-            return;
-          }
+      const slot = node.clothingSlot.trim();
+      let ancestor = node.parent;
+      let inheritsFromAncestor = false;
+      while (ancestor && ancestor instanceof Group) {
+        const ancestorSlot = ancestor.clothingSlot?.trim();
+        if (ancestorSlot === slot) {
+          inheritsFromAncestor = true;
+          break;
         }
+        ancestor = ancestor.parent;
       }
 
-      if (!isStructuralParentOnly(node)) {
-        const bucket = getOrCreateBucket(node.clothingSlot);
+      if (!inheritsFromAncestor && !isStructuralParentOnly(node)) {
+        const bucket = getOrCreateBucket(slot);
         bucket.elements.push(node);
       }
     }

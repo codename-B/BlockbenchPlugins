@@ -3,6 +3,8 @@ import * as PACKAGE from "../../package.json";
 import { is_vs_project } from "../util";
 import { getAnimatedConstraintsForBone } from "./ik/constraints";
 import { isIKAnimationContextActive } from "./ik/utils";
+import { composeEulerXYZ, relativeEulerXYZ } from "../attachments/attachment_transform";
+import type { Vector3Tuple } from "../attachments/attachment_transform";
 
 
 createBlockbenchMod(`${PACKAGE.name}:node_preview_controller_mod`,
@@ -13,7 +15,22 @@ createBlockbenchMod(`${PACKAGE.name}:node_preview_controller_mod`,
         Blockbench.NodePreviewController.prototype.updateTransform = function (this: NodePreviewController, node: OutlinerNode) {
             if (is_vs_project(Project)) {
                 if ((node instanceof Group || node instanceof Cube)&& node.stepParentName && node.stepParentName !== "") {
-                    return updateStepChildTransform(this, node);                    
+                    const stepParent = resolveStepParentTarget(node);
+                    const usesPhysicalParent = node.vs_step_parent_local !== true
+                        && stepParent instanceof Group
+                        && node.parent === stepParent;
+
+                    // Absolute-space BB attachments can use Blockbench's normal
+                    // transform once they have been placed under the real socket.
+                    // Standalone legacy sources should likewise retain their
+                    // authored hierarchy when no socket is present.
+                    if (usesPhysicalParent || (node.vs_step_parent_local !== true && !stepParent)) {
+                        const result = inject_context.original.call(this, node);
+                        applyConstrainedGroupRotation(node);
+                        return result;
+                    }
+
+                    return updateStepChildTransform(this, node, stepParent);
                 }
 
                 const result = inject_context.original.call(this, node);
@@ -32,26 +49,48 @@ createBlockbenchMod(`${PACKAGE.name}:node_preview_controller_mod`,
 /**
  * Does the same as the original method but skips parenting root groups to the internal root mesh (commented section)
  */
-function updateStepChildTransform(controller: NodePreviewController, element: any) {
+function updateStepChildTransform(controller: NodePreviewController, element: any, stepParent: Group | Cube | null) {
     //@ts-expect-error: missing types
     const mesh = element.mesh;
 
-        //@ts-expect-error: missing types
-        if (element.getTypeBehavior('movable')) {
-            //@ts-expect-error: missing types
-            mesh.position.set(element.origin[0], element.origin[1], element.origin[2]);
-        }    
-
-        //@ts-expect-error: missing types
-        if (element.getTypeBehavior('rotatable')) {
-            const rotation = getPreviewRotation(element);
-            //@ts-expect-error: missing types
-            mesh.rotation.x = Math.degToRad(rotation[0]);
-            //@ts-expect-error: missing types
-            mesh.rotation.y = Math.degToRad(rotation[1]);
-            //@ts-expect-error: missing types
-            mesh.rotation.z = Math.degToRad(rotation[2]);
+    //@ts-expect-error: missing types
+    if (element.getTypeBehavior('movable')) {
+        let position = [...element.origin] as Vector3Tuple;
+        if (stepParent) {
+            if (element.vs_step_parent_local === true) {
+                // VS children are relative to parent.from, while the preview
+                // mesh is rooted at parent.rotationOrigin/origin.
+                const parentFrom = getStepParentFrom(stepParent);
+                position = [
+                    element.origin[0] + parentFrom[0] - stepParent.origin[0],
+                    element.origin[1] + parentFrom[1] - stepParent.origin[1],
+                    element.origin[2] + parentFrom[2] - stepParent.origin[2],
+                ];
+            } else {
+                // Absolute BB coordinates become local to the target mesh pivot.
+                position = [
+                    element.origin[0] - stepParent.origin[0],
+                    element.origin[1] - stepParent.origin[1],
+                    element.origin[2] - stepParent.origin[2],
+                ];
+            }
         }
+        //@ts-expect-error: missing types
+        mesh.position.set(position[0], position[1], position[2]);
+    }
+
+    //@ts-expect-error: missing types
+    if (element.getTypeBehavior('rotatable')) {
+        const rotation = element.vs_step_parent_local === true || !stepParent
+            ? getPreviewRotation(element)
+            : relativeEulerXYZ(getElementBindRotation(element), getElementBindRotation(stepParent));
+        //@ts-expect-error: missing types
+        mesh.rotation.x = Math.degToRad(rotation[0]);
+        //@ts-expect-error: missing types
+        mesh.rotation.y = Math.degToRad(rotation[1]);
+        //@ts-expect-error: missing types
+        mesh.rotation.z = Math.degToRad(rotation[2]);
+    }
     
     //@ts-expect-error: missing types
     if (element.getTypeBehavior('scalable')) {
@@ -81,10 +120,9 @@ function updateStepChildTransform(controller: NodePreviewController, element: an
     // }
 
     if((element instanceof Cube || element instanceof Group) && element.stepParentName && element.stepParentName != "") {
-        const step_parent = Cube.all.find(c => c.name === `${element.stepParentName}_geo`);
-        // Guard against self-parenting (would cause THREE.js "can't add as child of itself" error)
-        if(step_parent && step_parent !== element && step_parent.mesh !== element.mesh) {
-            step_parent.mesh.add(element.mesh);
+        // Guard against self-parenting and attachment-child cycles.
+        if(stepParent && stepParent !== element && stepParent.mesh !== element.mesh) {
+            stepParent.mesh.add(element.mesh);
         } else {
             Project!.model_3d.add(mesh);
         }
@@ -93,6 +131,64 @@ function updateStepChildTransform(controller: NodePreviewController, element: an
     mesh.updateMatrixWorld();
 
     controller.dispatchEvent('update_transform', { element });
+}
+
+function isInElementSubtree(candidate: Group | Cube, element: Group | Cube): boolean {
+    let current: any = candidate;
+    while (current instanceof Group || current instanceof Cube) {
+        if (current === element) return true;
+        current = current.parent;
+    }
+    return false;
+}
+
+function resolveStepParentTarget(element: Group | Cube): Group | Cube | null {
+    const name = element.stepParentName?.trim();
+    if (!name) return null;
+    const attachmentSlot = element.clothingSlot?.trim();
+
+    const groups = Group.all.filter((candidate: Group) =>
+        candidate.name === name
+        && candidate !== element
+        && !isInElementSubtree(candidate, element)
+    );
+    const preferredGroup = groups.find((candidate: Group) =>
+        !candidate.stepParentName?.trim()
+        && (!candidate.clothingSlot?.trim() || candidate.clothingSlot?.trim() !== attachmentSlot)
+    ) || groups.find((candidate: Group) =>
+        !candidate.clothingSlot?.trim() || candidate.clothingSlot?.trim() !== attachmentSlot
+    ) || groups[0];
+    if (preferredGroup) return preferredGroup;
+
+    const cubes = Cube.all.filter((candidate: Cube) =>
+        candidate.name === `${name}_geo`
+        && candidate !== element
+        && !isInElementSubtree(candidate, element)
+    );
+    return cubes.find((candidate: Cube) =>
+        !candidate.clothingSlot?.trim() || candidate.clothingSlot?.trim() !== attachmentSlot
+    ) || cubes[0] || null;
+}
+
+function getStepParentFrom(stepParent: Group | Cube): Vector3Tuple {
+    if (stepParent instanceof Cube) return [...stepParent.from] as Vector3Tuple;
+    if (Array.isArray(stepParent.vs_group_from) && stepParent.vs_group_from.length === 3) {
+        return [...stepParent.vs_group_from] as Vector3Tuple;
+    }
+    const geoChild = stepParent.children.find(child =>
+        child instanceof Cube && child.name === `${stepParent.name}_geo`
+    ) as Cube | undefined;
+    return [...(geoChild?.from || stepParent.origin)] as Vector3Tuple;
+}
+
+function getElementBindRotation(element: Group | Cube): Vector3Tuple {
+    const chain: Vector3Tuple[] = [];
+    let current: any = element;
+    while (current instanceof Group || current instanceof Cube) {
+        chain.unshift([...(current.rotation || [0, 0, 0])] as Vector3Tuple);
+        current = current.parent;
+    }
+    return composeEulerXYZ(chain);
 }
 
 function getPreviewRotation(element: any): [number, number, number] {

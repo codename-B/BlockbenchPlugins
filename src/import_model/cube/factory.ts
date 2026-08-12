@@ -22,12 +22,10 @@ export function create_cube(object_space_pos: [number,number,number], vsElement:
     };
     const cube = new Cube(cube_options);
 
-    // @ts-expect-error: custom property for round-trip fidelity
     cube.vs_has_rotation_origin = vsElement.rotationOrigin !== undefined;
 
     // Preserve element-level uv offset (Blockbench may not preserve uv_offset in per-face UV mode)
     if (vsElement.uv) {
-        // @ts-expect-error: custom property for round-trip fidelity
         cube.vs_uv = vsElement.uv;
     }
 
