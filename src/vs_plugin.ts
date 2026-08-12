@@ -21,7 +21,6 @@ import "./mods/settingsMod";
 import "./mods/legacyFormatConverterMod";
 import "./mods/nodePreviewControllerMod";
 import "./mods/attachmentsMod";
-import "./mods/ik/index";
 
 // Panels (loaded after mods to avoid blocking critical format registration)
 import "./panels/vs_face_panel";

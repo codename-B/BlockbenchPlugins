@@ -1,8 +1,6 @@
 import { createBlockbenchMod } from "../util/moddingTools";
 import * as PACKAGE from "../../package.json";
 import { is_vs_project } from "../util";
-import { getAnimatedConstraintsForBone } from "./ik/constraints";
-import { isIKAnimationContextActive } from "./ik/utils";
 import { composeEulerXYZ, relativeEulerXYZ } from "../attachments/attachment_transform";
 import type { Vector3Tuple } from "../attachments/attachment_transform";
 
@@ -25,17 +23,13 @@ createBlockbenchMod(`${PACKAGE.name}:node_preview_controller_mod`,
                     // Standalone legacy sources should likewise retain their
                     // authored hierarchy when no socket is present.
                     if (usesPhysicalParent || (node.vs_step_parent_local !== true && !stepParent)) {
-                        const result = inject_context.original.call(this, node);
-                        applyConstrainedGroupRotation(node);
-                        return result;
+                        return inject_context.original.call(this, node);
                     }
 
                     return updateStepChildTransform(this, node, stepParent);
                 }
 
-                const result = inject_context.original.call(this, node);
-                applyConstrainedGroupRotation(node);
-                return result;
+                return inject_context.original.call(this, node);
             }
             return inject_context.original.call(this, node);
         };
@@ -82,7 +76,7 @@ function updateStepChildTransform(controller: NodePreviewController, element: an
     //@ts-expect-error: missing types
     if (element.getTypeBehavior('rotatable')) {
         const rotation = element.vs_step_parent_local === true || !stepParent
-            ? getPreviewRotation(element)
+            ? ([element.rotation?.[0] || 0, element.rotation?.[1] || 0, element.rotation?.[2] || 0] as [number, number, number])
             : relativeEulerXYZ(getElementBindRotation(element), getElementBindRotation(stepParent));
         //@ts-expect-error: missing types
         mesh.rotation.x = Math.degToRad(rotation[0]);
@@ -189,64 +183,5 @@ function getElementBindRotation(element: Group | Cube): Vector3Tuple {
         current = current.parent;
     }
     return composeEulerXYZ(chain);
-}
-
-function getPreviewRotation(element: any): [number, number, number] {
-    const rotation: [number, number, number] = [
-        element.rotation?.[0] || 0,
-        element.rotation?.[1] || 0,
-        element.rotation?.[2] || 0
-    ];
-
-    if (!isIKAnimationContextActive()) {
-        return rotation;
-    }
-
-    if (!(element instanceof Group)) {
-        return rotation;
-    }
-
-    const constraint = getAnimatedConstraintsForBone(element.name);
-    if (!constraint) {
-        return rotation;
-    }
-
-    if (constraint.allowedAxes) {
-        if (!constraint.allowedAxes.x) rotation[0] = 0;
-        if (!constraint.allowedAxes.y) rotation[1] = 0;
-        if (!constraint.allowedAxes.z) rotation[2] = 0;
-    }
-
-    if (constraint.rotationLimits) {
-        if (constraint.rotationLimits.x) {
-            rotation[0] = Math.max(constraint.rotationLimits.x.min, Math.min(constraint.rotationLimits.x.max, rotation[0]));
-        }
-        if (constraint.rotationLimits.y) {
-            rotation[1] = Math.max(constraint.rotationLimits.y.min, Math.min(constraint.rotationLimits.y.max, rotation[1]));
-        }
-        if (constraint.rotationLimits.z) {
-            rotation[2] = Math.max(constraint.rotationLimits.z.min, Math.min(constraint.rotationLimits.z.max, rotation[2]));
-        }
-    }
-
-    return rotation;
-}
-
-function applyConstrainedGroupRotation(node: any): void {
-    if (!(node instanceof Group)) {
-        return;
-    }
-
-    //@ts-expect-error: missing types
-    const mesh = node.mesh;
-    if (!mesh?.rotation) {
-        return;
-    }
-
-    const rotation = getPreviewRotation(node);
-    mesh.rotation.x = Math.degToRad(rotation[0]);
-    mesh.rotation.y = Math.degToRad(rotation[1]);
-    mesh.rotation.z = Math.degToRad(rotation[2]);
-    mesh.updateMatrixWorld?.();
 }
 
