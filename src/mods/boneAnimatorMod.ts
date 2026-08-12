@@ -50,7 +50,6 @@ createBlockbenchMod(
                             THREE.MathUtils.degToRad(rotation[0]),
                             THREE.MathUtils.degToRad(rotation[1]),
                             THREE.MathUtils.degToRad(rotation[2])
-                            //@ts-expect-error: Missing in type --- IGNORE ---
                         ), Format.euler_order);
                     this.displayPosition(vec.toArray(), multiplier);
                 }

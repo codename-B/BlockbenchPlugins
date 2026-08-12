@@ -560,7 +560,7 @@ const vuePanel = {
             if (!elements || !Array.isArray(elements)) return;
 
             try {
-                Undo.initEdit({ outliner: true }, `Toggle visibility: ${elements.length} element(s)`);
+                Undo.initEdit({ outliner: true });
 
                 elements.forEach(element => {
                     if (!element) return;
@@ -660,6 +660,7 @@ const vuePanel = {
  */
 export function createAttachmentsPanel(actions: any) {
     const toolbar = new Toolbar('attachments_toolbar', {
+        id: 'attachments_toolbar',
         children: []
     });
 
@@ -672,13 +673,17 @@ export function createAttachmentsPanel(actions: any) {
     }
 
     const panel = new Panel('attachments_panel', {
+        id: 'attachments_panel',
         name: 'Attachments',
         icon: 'attach_file',
+        expand_button: false,
+        default_side: 'right',
         default_position: {
             slot: 'right_bar',
             float_position: [0, 0],
             float_size: [300, 400],
-            height: 400
+            height: 400,
+            folded: false
         },
         toolbars: [toolbar],
         component: vuePanel

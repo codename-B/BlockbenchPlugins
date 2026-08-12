@@ -89,5 +89,5 @@ export function getAttachments(): (Group | Cube)[] {
 
 export function isAttachment(node: any): boolean {
   if (!node) return false;
-  return (node instanceof Group || node instanceof Cube) && node.clothingSlot && node.clothingSlot.trim() !== '';
+  return !!(node instanceof Group || node instanceof Cube) && !!node.clothingSlot && node.clothingSlot.trim() !== '';
 }

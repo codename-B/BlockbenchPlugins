@@ -377,14 +377,18 @@ createBlockbenchMod(
     {},
     () => {
         panel = new Panel('vs_face_properties', {
+            id: 'vs_face_properties',
             name: 'VS Face Properties',
             icon: 'grain',
+            expand_button: false,
+            default_side: 'right',
             condition: () => Format?.id === 'formatVS',
             default_position: {
                 slot: 'right_bar',
                 float_position: [0, 0],
                 float_size: [300, 300],
-                height: 300
+                height: 300,
+                folded: false
             },
             component: vueComponent
         });
