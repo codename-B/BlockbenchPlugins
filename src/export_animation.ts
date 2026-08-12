@@ -1,5 +1,5 @@
 import { VS_Animation, VS_AnimationKey, VS_AnimationLibrary, VS_AnimationParticle, VS_AnimationSound, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
-import { sound_location_for_data_point } from "./animation_sounds";
+import { sound_from_data_point } from "./animation_sounds";
 import * as util from "./util";
 import { is_backdrop_project } from "./util/misc";
 
@@ -295,11 +295,11 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
                 }
                 if (kf.channel === 'sound') {
                     kf.data_points.forEach(dp => {
-                        const location = sound_location_for_data_point(dp);
-                        if (!location) return;
+                        const sound = sound_from_data_point(dp);
+                        if (!sound) return;
                         const frame = Math.round(kf.time * fps);
                         keyframes[frame] = keyframes[frame] || { frame, elements: {} };
-                        (keyframes[frame].sounds = keyframes[frame].sounds || []).push({ location });
+                        (keyframes[frame].sounds = keyframes[frame].sounds || []).push(sound);
                     });
                 }
             });

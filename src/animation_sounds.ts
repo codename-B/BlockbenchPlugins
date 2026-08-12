@@ -12,10 +12,63 @@
  */
 
 import { parse_model_location } from "./animation_library_paths";
+import { VS_AnimationSound } from "./vs_shape_def";
 
 const fs = requireNativeModule('fs');
 
 const SOUND_EXTENSIONS = ['.ogg', '.wav', '.mp3'];
+
+/**
+ * Extra sound fields, registered on Blockbench's keyframe data point so they get real inputs in
+ * the keyframe panel. Blockbench renders whatever is registered on KeyframeDataPoint
+ * (`v-for="(property, key) in data_point.constructor.properties"`), honouring `condition`, so
+ * these only appear on sound keyframes. They round-trip through .bbmodel automatically because
+ * Keyframe.getUndoCopy() copies every registered property of each data point.
+ *
+ * Defaults mirror the engine's AnimationSound, and export omits any field still at its default.
+ */
+const SOUND_DEFAULTS = { vs_range: 32, vs_volume: 1, vs_pitch: 1, vs_chance: 1 } as const;
+
+function onSoundKeyframe(dataPoint: any): boolean {
+    return dataPoint?.keyframe?.channel === 'sound';
+}
+
+if (typeof KeyframeDataPoint !== 'undefined') {
+    new Property(KeyframeDataPoint, 'number', 'vs_range', {
+        label: 'Range', exposed: true, default: SOUND_DEFAULTS.vs_range, condition: onSoundKeyframe,
+    });
+    new Property(KeyframeDataPoint, 'number', 'vs_volume', {
+        label: 'Volume', exposed: true, default: SOUND_DEFAULTS.vs_volume, condition: onSoundKeyframe,
+    });
+    new Property(KeyframeDataPoint, 'number', 'vs_pitch', {
+        label: 'Pitch', exposed: true, default: SOUND_DEFAULTS.vs_pitch, condition: onSoundKeyframe,
+    });
+    new Property(KeyframeDataPoint, 'number', 'vs_chance', {
+        label: 'Chance', exposed: true, default: SOUND_DEFAULTS.vs_chance, condition: onSoundKeyframe,
+    });
+    new Property(KeyframeDataPoint, 'boolean', 'vs_looping', {
+        label: 'Looping', exposed: true, default: false, condition: onSoundKeyframe,
+    });
+}
+
+/**
+ * Reads the optional sound fields off a data point. The panel renders numbers as text inputs, so
+ * these come back as strings and have to be coerced before comparing against the defaults.
+ */
+function readSoundOptions(dp: KeyframeDataPointData): Partial<VS_AnimationSound> {
+    const out: Partial<VS_AnimationSound> = {};
+
+    for (const key of ['range', 'volume', 'pitch', 'chance'] as const) {
+        const raw = dp[`vs_${key}`];
+        if (raw === undefined || raw === null || raw === '') continue;
+        const value = Number(raw);
+        if (!Number.isFinite(value) || value === SOUND_DEFAULTS[`vs_${key}`]) continue;
+        out[key] = value;
+    }
+
+    if (dp.vs_looping === true) out.looping = true;
+    return out;
+}
 
 /** Strips a trailing audio extension. */
 function without_extension(path: string): string {
@@ -37,13 +90,20 @@ export function sound_location_for_file(filePath: string): string | null {
 }
 
 /** The VS asset location a Blockbench sound data point should export as. */
-export function sound_location_for_data_point(dp: KeyframeDataPointData): string | null {
+function sound_location_for_data_point(dp: KeyframeDataPointData): string | null {
     const fromFile = dp.file ? sound_location_for_file(dp.file) : null;
     if (fromFile) return fromFile;
     // Hand-typed effect names are treated as asset locations so authors can reference sounds
     // that live outside the project folder.
     const effect = (dp.effect || '').trim();
     return effect || null;
+}
+
+/** Converts one Blockbench sound data point to a VS keyframe sound, or null if it has no target. */
+export function sound_from_data_point(dp: KeyframeDataPointData): VS_AnimationSound | null {
+    const location = sound_location_for_data_point(dp);
+    if (!location) return null;
+    return { location, ...readSoundOptions(dp) };
 }
 
 /** Finds the audio file for a VS sound location so Blockbench can play it while scrubbing. */
@@ -66,9 +126,16 @@ function sound_file_for_location(location: string): string | null {
 }
 
 /** Builds one Blockbench sound data point, attaching the audio file when it can be found. */
-export function sound_data_point(location: string): Record<string, unknown> {
-    const dp: Record<string, unknown> = { effect: location };
-    const file = sound_file_for_location(location);
+export function sound_data_point(sound: VS_AnimationSound): Record<string, unknown> {
+    const dp: Record<string, unknown> = { effect: sound.location };
+    const file = sound_file_for_location(sound.location);
     if (file) dp.file = file;
+
+    if (sound.range !== undefined) dp.vs_range = sound.range;
+    if (sound.volume !== undefined) dp.vs_volume = sound.volume;
+    if (sound.pitch !== undefined) dp.vs_pitch = sound.pitch;
+    if (sound.chance !== undefined) dp.vs_chance = sound.chance;
+    if (sound.looping) dp.vs_looping = true;
+
     return dp;
 }

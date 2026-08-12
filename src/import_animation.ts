@@ -57,7 +57,7 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
             getEffectAnimator(animation).addKeyframe({
                 channel: 'sound',
                 time: vsKeyframe.frame / FPS,
-                data_points: vsKeyframe.sounds.map(s => sound_data_point(s.location)),
+                data_points: vsKeyframe.sounds.map(s => sound_data_point(s)),
             });
         }
 
