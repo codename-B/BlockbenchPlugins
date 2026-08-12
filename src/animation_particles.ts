@@ -11,6 +11,7 @@
  */
 
 import { parse_model_location } from "./animation_library_paths";
+import { is_vs_project } from "./util";
 
 const fs = requireNativeModule('fs');
 
@@ -78,9 +79,21 @@ export function particle_data_point(effect: string, locator?: string): Record<st
 }
 
 /**
- * Re-resolves every particle keyframe in the project. Used by the "Reload VFX Previews" action so
- * effects authored by hand (or added to the assets folder after import) start previewing without
- * a reimport. Returns how many data points now have an emitter.
+ * Blockbench stores the emitter path on the keyframe as an absolute path and saves it into the
+ * .bbmodel, so a project opened on another machine (or after the assets move) carries a path that
+ * does not exist and Blockbench reports "File Not Found". The path is derived from the effect
+ * code, so it is never worth trusting what was saved: re-resolve every particle keyframe against
+ * this machine's asset folder whenever a project loads.
+ */
+Blockbench.on('load_project', () => {
+    if (!is_vs_project(Project)) return;
+    relink_particle_previews();
+});
+
+/**
+ * Re-resolves every particle keyframe in the project. Also exposed through the "Reload VFX
+ * Previews" action, for effects authored by hand or added to the assets folder after the model was
+ * opened. Returns how many data points now have an emitter.
  */
 export function relink_particle_previews(): number {
     clear_particle_cache();

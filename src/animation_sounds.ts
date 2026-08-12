@@ -12,6 +12,7 @@
  */
 
 import { parse_model_location } from "./animation_library_paths";
+import { is_vs_project } from "./util";
 import { VS_AnimationSound } from "./vs_shape_def";
 
 const fs = requireNativeModule('fs');
@@ -124,6 +125,38 @@ function sound_file_for_location(location: string): string | null {
     }
     return null;
 }
+
+/**
+ * Re-resolves the audio file on every sound keyframe. Blockbench saves `file` into the .bbmodel as
+ * an absolute path, so a project opened elsewhere points at a file that does not exist. The path
+ * is derived from the sound's asset location, so it is rebuilt on load rather than trusted.
+ */
+export function relink_sound_files(): number {
+    let linked = 0;
+
+    for (const animation of (Animation as unknown as typeof _Animation).all) {
+        const effects = (animation.animators as any)?.effects;
+        if (!effects?.sound) continue;
+
+        for (const keyframe of effects.sound as _Keyframe[]) {
+            for (const dp of keyframe.data_points as any[]) {
+                const file = sound_file_for_location((dp.effect || '').trim());
+                if (file) {
+                    dp.file = file;
+                    linked++;
+                } else {
+                    delete dp.file;
+                }
+            }
+        }
+    }
+    return linked;
+}
+
+Blockbench.on('load_project', () => {
+    if (!is_vs_project(Project)) return;
+    relink_sound_files();
+});
 
 /** Builds one Blockbench sound data point, attaching the audio file when it can be found. */
 export function sound_data_point(sound: VS_AnimationSound): Record<string, unknown> {
