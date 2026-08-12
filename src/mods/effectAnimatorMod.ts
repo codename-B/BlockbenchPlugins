@@ -13,15 +13,27 @@ import { ensure_sound_links } from "../animation_sounds";
  * work by 100ms. Hooking the render path instead makes it demand-driven, so it cannot run too
  * early and there is nothing for the user to trigger by hand.
  */
+/** Animators currently sitting on the rewind at the end of a "once" animation. */
+const rewound = new WeakSet<object>();
+
 /**
- * True when this render is the rewind Blockbench performs as a "once" animation finishes: the
- * playhead has jumped back to the start from somewhere later in the timeline. Playing again from a
- * paused start does not match, because the previous render left the playhead at 0.
+ * True while this animator is showing the rewind Blockbench performs as a "once" animation ends.
+ *
+ * Ending a one-shot runs `setTime(0)`, `preview()`, `pause()` and finally `preview(true)`, so the
+ * playhead lands on 0 and renders three times. Only the last of those passes `in_loop`, which is
+ * what Blockbench gates sound on, so it is the one that replays a frame-0 keyframe. Detecting the
+ * rewind by comparing against `last_displayed_time` alone does not survive that, because the first
+ * render resets it to 0. The state is latched instead, and cleared as soon as the playhead moves,
+ * so pressing play again still triggers the sound normally.
  */
 function is_end_of_single_shot(animator: any): boolean {
-    return animator.animation?.loop === 'once'
-        && animator.animation.time === 0
-        && animator.last_displayed_time > 0;
+    const animation = animator.animation;
+    if (!animation || animation.loop !== 'once' || animation.time > 0) {
+        rewound.delete(animator);
+        return false;
+    }
+    if (animator.last_displayed_time > 0) rewound.add(animator);
+    return rewound.has(animator);
 }
 
 createBlockbenchMod(`${PACKAGE.name}:effect_animator_mod`,
