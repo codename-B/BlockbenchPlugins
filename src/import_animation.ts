@@ -2,57 +2,63 @@ import * as util from "./util";
 import { VS_Animation } from "./vs_shape_def";
 
 /**
+ * Creates one Blockbench animation from a VS animation definition and returns it.
+ */
+export function create_animation(vsAnimation: VS_Animation): _Animation {
+    const FPS = util.fps;
+    const interpolationMode = "linear";
+    const animationLength = vsAnimation.quantityframes / FPS;
+    const isLooping = vsAnimation.onAnimationEnd === 'Repeat';
+
+    const animation = ((new Animation({
+        //@ts-expect-error: Blockbench overwrites libdom's Animation type with its own Animation Class, but TypeScript doesn't include a way to overwrite UMD global types.
+        name: vsAnimation.name,
+        loop: isLooping ? 'loop' : 'once',
+        length: animationLength,
+        snapping: FPS
+    }) as unknown) as _Animation).add();
+
+    // Preserve VS-specific animation properties for round-trip fidelity
+    // @ts-expect-error: custom property for round-trip
+    animation.vs_code = vsAnimation.code;
+    // @ts-expect-error: custom property for round-trip
+    animation.vs_onActivityStopped = vsAnimation.onActivityStopped;
+    // @ts-expect-error: custom property for round-trip
+    animation.vs_onAnimationEnd = vsAnimation.onAnimationEnd;
+
+    vsAnimation.keyframes.forEach(vsKeyframe => {
+        const time = vsKeyframe.frame / FPS;
+        for (const boneName in vsKeyframe.elements) {
+            const transform = vsKeyframe.elements[boneName];
+            const bone = Group.all.find(g => g.name === boneName);
+
+            if (bone) {
+                const animator = animation.getBoneAnimator(bone);
+
+                if (transform.rotationX != null || transform.rotationY != null || transform.rotationZ != null) {
+                    const rotation = [transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0];
+                    animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'rotation', data_points: [{ x: rotation[0], y: rotation[1], z: rotation[2] }] });
+                }
+
+                if (transform.offsetX != null || transform.offsetY != null || transform.offsetZ != null) {
+                    const position = [transform.offsetX || 0, transform.offsetY || 0, transform.offsetZ || 0];
+                    animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'position', data_points: [{ x: position[0] || 0, y: position[1] || 0, z: position[2] || 0 }] });
+                }
+
+                if (transform.stretchX != null || transform.stretchY != null || transform.stretchZ != null) {
+                    animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'scale', data_points: [{ x: transform.stretchX ?? 1, y: transform.stretchY ?? 1, z: transform.stretchZ ?? 1 }] });
+                }
+            }
+        }
+    });
+
+    return animation;
+}
+
+/**
  * Imports animations from the Vintage Story format into Blockbench.
  * @param {Array<object>} animations The array of animation data from the VS model file.
  */
 export function import_animations(animations: Array<VS_Animation>) {
-    const FPS = util.fps;
-    const interpolationMode = "linear";
-
-    animations.forEach(vsAnimation => {
-        const animationLength = vsAnimation.quantityframes / FPS;
-        const isLooping = vsAnimation.onAnimationEnd === 'Repeat';
-
-        const animation = ((new Animation({
-            //@ts-expect-error: Blockbench overwrites libdom's Animation type with its own Animation Class, but TypeScript doesn't include a way to overwrite UMD global types.
-            name: vsAnimation.name,
-            loop: isLooping ? 'loop' : 'once',
-            length: animationLength,
-            snapping: FPS
-        }) as unknown) as _Animation).add();
-
-        // Preserve VS-specific animation properties for round-trip fidelity
-        // @ts-expect-error: custom property for round-trip
-        animation.vs_code = vsAnimation.code;
-        // @ts-expect-error: custom property for round-trip
-        animation.vs_onActivityStopped = vsAnimation.onActivityStopped;
-        // @ts-expect-error: custom property for round-trip
-        animation.vs_onAnimationEnd = vsAnimation.onAnimationEnd;
-
-        vsAnimation.keyframes.forEach(vsKeyframe => {
-            const time = vsKeyframe.frame / FPS;
-            for (const boneName in vsKeyframe.elements) {
-                const transform = vsKeyframe.elements[boneName];
-                const bone = Group.all.find(g => g.name === boneName);
-
-                if (bone) {
-                    const animator = animation.getBoneAnimator(bone);
-
-                    if (transform.rotationX != null || transform.rotationY != null || transform.rotationZ != null) {
-                        const rotation = [transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0];
-                        animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'rotation', data_points: [{ x: rotation[0], y: rotation[1], z: rotation[2] }] });
-                    }
-
-                    if (transform.offsetX != null || transform.offsetY != null || transform.offsetZ != null) {
-                        const position = [transform.offsetX || 0, transform.offsetY || 0, transform.offsetZ || 0];
-                        animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'position', data_points: [{ x: position[0] || 0, y: position[1] || 0, z: position[2] || 0 }] });
-                    }
-
-                    if (transform.stretchX != null || transform.stretchY != null || transform.stretchZ != null) {
-                        animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'scale', data_points: [{ x: transform.stretchX ?? 1, y: transform.stretchY ?? 1, z: transform.stretchZ ?? 1 }] });
-                    }
-                }
-            }
-        });
-    });
+    animations.forEach(vsAnimation => create_animation(vsAnimation));
 };
