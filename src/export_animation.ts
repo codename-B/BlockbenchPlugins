@@ -1,4 +1,4 @@
-import { VS_Animation, VS_AnimationKey, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_AnimationParticle, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
 import * as util from "./util";
 import { is_backdrop_project } from "./util/misc";
 
@@ -284,7 +284,7 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
             });
         }
 
-        // Process effect animators for texture swap keyframes
+        // Process effect animators for texture swap and particle keyframes
         if (animator.type === 'effect' && animator.keyframes && animator.keyframes.length > 0) {
             animator.keyframes.forEach(kf => {
                 if (kf.channel === 'timeline') {
@@ -297,6 +297,18 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
                             keyframes[frame].textures = textures;
                         }
                     }
+                }
+                if (kf.channel === 'particle') {
+                    kf.data_points.forEach(dp => {
+                        const effect = (dp.effect || '').trim();
+                        if (!effect) return;
+                        const frame = Math.round(kf.time * fps);
+                        keyframes[frame] = keyframes[frame] || { frame, elements: {} };
+                        const particle: VS_AnimationParticle = { effect };
+                        const locator = (dp.locator || '').trim();
+                        if (locator) particle.atAttachmentPoint = locator;
+                        (keyframes[frame].particles = keyframes[frame].particles || []).push(particle);
+                    });
                 }
             });
         }
@@ -311,6 +323,9 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
             wrapped_elements[element] = new oneLiner(content);
         }
         keyframe.elements = wrapped_elements;
+        if (keyframe.particles) {
+            keyframe.particles = keyframe.particles.map(p => new oneLiner(p) as unknown as VS_AnimationParticle);
+        }
     }
 
     // Use preserved VS values if available, otherwise compute defaults
@@ -421,7 +436,8 @@ function keyframe_contents_match(a: VS_Keyframe, b: VS_Keyframe): boolean {
 function stable_keyframe_content(keyframe: VS_Keyframe): string {
     return JSON.stringify({
         elements: sort_nested_object(keyframe.elements),
-        textures: keyframe.textures ? sort_nested_object(keyframe.textures) : undefined
+        textures: keyframe.textures ? sort_nested_object(keyframe.textures) : undefined,
+        particles: keyframe.particles ? sort_nested_object(keyframe.particles) : undefined
     });
 }
 

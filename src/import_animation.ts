@@ -30,6 +30,16 @@ export function create_animation(vsAnimation: VS_Animation): _Animation {
     const channelFrames = buildChannelFrames(vsAnimation);
 
     vsAnimation.keyframes.forEach(vsKeyframe => {
+        // Particle triggers live on the effect animator (Blockbench's Effects > Particle channel)
+        if (vsKeyframe.particles && vsKeyframe.particles.length > 0) {
+            const effects = getEffectAnimator(animation);
+            effects.addKeyframe({
+                channel: 'particle',
+                time: vsKeyframe.frame / FPS,
+                data_points: vsKeyframe.particles.map(p => ({ effect: p.effect, locator: p.atAttachmentPoint || '' })),
+            });
+        }
+
         for (const boneName in vsKeyframe.elements) {
             const transform = vsKeyframe.elements[boneName];
             const bone = Group.all.find(g => g.name === boneName);
@@ -54,6 +64,15 @@ export function create_animation(vsAnimation: VS_Animation): _Animation {
 export function import_animations(animations: Array<VS_Animation>) {
     animations.forEach(vsAnimation => create_animation(vsAnimation));
 };
+
+// Blockbench lazily creates the effect animator on first access, but only on builds where
+// `animators` is the proxy. Fall back to constructing it so particle import cannot throw.
+function getEffectAnimator(animation: _Animation): any {
+    const animators = animation.animators as any;
+    if (animators.effects) return animators.effects;
+    animators.effects = new EffectAnimator(null, animation, 'Effects');
+    return animators.effects;
+}
 
 type BBImportChannel = 'rotation' | 'position' | 'scale';
 

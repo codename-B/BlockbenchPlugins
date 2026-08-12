@@ -90,6 +90,18 @@ export interface VS_Keyframe {
     frame: number,
     elements: Record<string, VS_AnimationKey>,
     textures?: Record<string, string>,
+    particles?: Array<VS_AnimationParticle>,
+}
+
+/**
+ * A one-shot particle effect trigger on a keyframe. Read by GlintMod's snowstorm
+ * particle system (SnowstormAnimationParticles); the base game ignores it.
+ */
+export interface VS_AnimationParticle {
+    /** Snowstorm particle effect identifier, e.g. "bruister_feathers" */
+    effect: string,
+    /** Attachment point (Blockbench locator) the effect spawns at; entity center when omitted */
+    atAttachmentPoint?: string,
 }
 
 /**
