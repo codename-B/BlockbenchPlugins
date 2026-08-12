@@ -11,6 +11,19 @@ export interface VS_Shape {
     textures: Record<string, string>,
     elements: Array<VS_Element>,
     animations?: Array<VS_Animation>,
+    animationLibraries?: Array<string>,
+}
+
+/**
+ * Standalone animation library file format. Mirrors the C# AnimationLibrary class.
+ * Library files live under `assets/<domain>/animations/<path>.json` and are referenced
+ * from a Shape's `animationLibraries` property. The host shape merges library animations
+ * into its own `Animations[]` at load time, keyed by `Animation.code`.
+ */
+export interface VS_AnimationLibrary {
+    code?: string,
+    name?: string,
+    animations: Array<VS_Animation>,
 }
 
 export interface VS_EditorSettings {
@@ -37,6 +50,7 @@ export interface VS_Element {
     climateColorMap?: string,
     gradientShade?: boolean,
     renderPass?: number,
+    paletteSlot?: number,
     seasonColorMap?: string,
     shade?: boolean,
     uv?: [number,number],

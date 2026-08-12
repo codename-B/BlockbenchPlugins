@@ -3,8 +3,12 @@ import { VS_Animation, VS_AnimationKey, VS_KeyFrameInterpolation } from "./vs_sh
 
 /**
  * Creates one Blockbench animation from a VS animation definition and returns it.
+ * When `path` is given the animation is associated with that library file (so the
+ * ANIMATIONS panel groups it under the file and saves route back to it); `saved_name`
+ * records the name it currently has on disk. Path-less animations are "inline" and
+ * round-trip into the shape's own `animations[]` on export.
  */
-export function create_animation(vsAnimation: VS_Animation): _Animation {
+export function create_animation(vsAnimation: VS_Animation, path?: string, saved_name?: string): _Animation {
     const FPS = util.fps;
     const animationLength = vsAnimation.quantityframes / FPS;
     const isLooping = vsAnimation.onAnimationEnd === 'Repeat';
@@ -16,6 +20,13 @@ export function create_animation(vsAnimation: VS_Animation): _Animation {
         length: animationLength,
         snapping: FPS
     }) as unknown) as _Animation).add();
+
+    // Associate with a library file when loaded from one (drives panel grouping + saving).
+    if (path) animation.path = path;
+    if (saved_name) {
+        animation.saved_name = saved_name;
+        animation.saved = true;
+    }
 
     // Preserve VS-specific animation properties for round-trip fidelity
     // @ts-expect-error: custom property for round-trip
@@ -58,7 +69,9 @@ export function create_animation(vsAnimation: VS_Animation): _Animation {
 }
 
 /**
- * Imports animations from the Vintage Story format into Blockbench.
+ * Imports inline (shape-embedded) animations from the Vintage Story format into Blockbench.
+ * These are not tied to a library file, so they round-trip back into the shape's own
+ * `animations[]` on export.
  * @param {Array<object>} animations The array of animation data from the VS model file.
  */
 export function import_animations(animations: Array<VS_Animation>) {

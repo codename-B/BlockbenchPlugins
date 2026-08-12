@@ -1,4 +1,4 @@
-import { VS_Animation, VS_AnimationKey, VS_AnimationParticle, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_AnimationLibrary, VS_AnimationParticle, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
 import * as util from "./util";
 import { is_backdrop_project } from "./util/misc";
 
@@ -178,24 +178,6 @@ function applyInterpolationToKey(
  * Exports Blockbench animations to the Vintage Story animation format.
  * @returns An array of VS animations.
  */
-export function export_animations(): Array<VS_Animation> {
-    // Don't export any animations if project contains backdrops
-    if (is_backdrop_project()) {
-        return [];
-    }
-
-    const catmullConverted: string[] = [];
-    const animations = (Animation as unknown as typeof _Animation).all
-        .map(animation => compile_animation(animation, catmullConverted))
-        .filter((a): a is VS_Animation => a !== null);
-
-    if (catmullConverted.length > 0) {
-        display_catmull_conversion_notice(catmullConverted);
-    }
-
-    return animations;
-}
-
 /**
  * Converts a single Blockbench animation to the Vintage Story animation format.
  * Returns null when the animation has no exportable keyframes (or for backdrop projects).
@@ -386,6 +368,24 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
     if (vsAnimation.keyframes.length === 0) return null;
     if (hadCatmullConversion && catmullConverted) catmullConverted.push(animation.name);
     return vsAnimation;
+}
+
+/**
+ * Compiles the given Blockbench animations into a VS animation library structure
+ * (`{ code?, name?, animations[] }`), the on-disk format for a standalone animation
+ * library file consumed by the engine's `Shape.AnimationLibraries` references.
+ */
+export function compile_animation_library(animations: _Animation[], code?: string, name?: string): VS_AnimationLibrary {
+    const catmullConverted: string[] = [];
+    const compiled = animations
+        .map(a => compile_animation(a, catmullConverted))
+        .filter((a): a is VS_Animation => a !== null);
+    if (catmullConverted.length > 0) display_catmull_conversion_notice(catmullConverted);
+
+    const library: VS_AnimationLibrary = { animations: compiled };
+    if (code) library.code = code;
+    if (name) library.name = name;
+    return library;
 }
 
 /**
