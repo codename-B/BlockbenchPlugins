@@ -1,12 +1,11 @@
 import * as util from "./util";
-import { VS_Animation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_KeyFrameInterpolation } from "./vs_shape_def";
 
 /**
  * Creates one Blockbench animation from a VS animation definition and returns it.
  */
 export function create_animation(vsAnimation: VS_Animation): _Animation {
     const FPS = util.fps;
-    const interpolationMode = "linear";
     const animationLength = vsAnimation.quantityframes / FPS;
     const isLooping = vsAnimation.onAnimationEnd === 'Repeat';
 
@@ -26,29 +25,22 @@ export function create_animation(vsAnimation: VS_Animation): _Animation {
     // @ts-expect-error: custom property for round-trip
     animation.vs_onAnimationEnd = vsAnimation.onAnimationEnd;
 
+    // Per-bone, per-channel sorted frame lists so bezier handle widths can be placed against the
+    // correct segment (mirrors the engine's per-channel keyframe walk).
+    const channelFrames = buildChannelFrames(vsAnimation);
+
     vsAnimation.keyframes.forEach(vsKeyframe => {
-        const time = vsKeyframe.frame / FPS;
         for (const boneName in vsKeyframe.elements) {
             const transform = vsKeyframe.elements[boneName];
             const bone = Group.all.find(g => g.name === boneName);
+            if (!bone) continue;
 
-            if (bone) {
-                const animator = animation.getBoneAnimator(bone);
-
-                if (transform.rotationX != null || transform.rotationY != null || transform.rotationZ != null) {
-                    const rotation = [transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0];
-                    animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'rotation', data_points: [{ x: rotation[0], y: rotation[1], z: rotation[2] }] });
-                }
-
-                if (transform.offsetX != null || transform.offsetY != null || transform.offsetZ != null) {
-                    const position = [transform.offsetX || 0, transform.offsetY || 0, transform.offsetZ || 0];
-                    animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'position', data_points: [{ x: position[0] || 0, y: position[1] || 0, z: position[2] || 0 }] });
-                }
-
-                if (transform.stretchX != null || transform.stretchY != null || transform.stretchZ != null) {
-                    animator.addKeyframe({ interpolation: interpolationMode, time, channel: 'scale', data_points: [{ x: transform.stretchX ?? 1, y: transform.stretchY ?? 1, z: transform.stretchZ ?? 1 }] });
-                }
-            }
+            const animator = animation.getBoneAnimator(bone);
+            const frames = channelFrames[boneName];
+            (Object.keys(IMPORT_CHANNELS) as BBImportChannel[]).forEach(channel => {
+                const opts = buildChannelKeyframeOptions(transform, channel, vsKeyframe.frame, frames[channel], FPS);
+                if (opts) animator.addKeyframe(opts);
+            });
         }
     });
 
@@ -62,3 +54,153 @@ export function create_animation(vsAnimation: VS_Animation): _Animation {
 export function import_animations(animations: Array<VS_Animation>) {
     animations.forEach(vsAnimation => create_animation(vsAnimation));
 };
+
+type BBImportChannel = 'rotation' | 'position' | 'scale';
+
+interface ImportChannelConfig {
+    interp: keyof VS_AnimationKey;
+    value: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
+    tangentIn: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
+    tangentOut: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
+    widthIn: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
+    widthOut: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
+    default: number;
+}
+
+const IMPORT_CHANNELS: Record<BBImportChannel, ImportChannelConfig> = {
+    rotation: {
+        interp: 'rotationInterp',
+        value: ['rotationX', 'rotationY', 'rotationZ'],
+        tangentIn: ['rotationTangentInX', 'rotationTangentInY', 'rotationTangentInZ'],
+        tangentOut: ['rotationTangentOutX', 'rotationTangentOutY', 'rotationTangentOutZ'],
+        widthIn: ['rotationTangentInWidthX', 'rotationTangentInWidthY', 'rotationTangentInWidthZ'],
+        widthOut: ['rotationTangentOutWidthX', 'rotationTangentOutWidthY', 'rotationTangentOutWidthZ'],
+        default: 0,
+    },
+    position: {
+        interp: 'positionInterp',
+        value: ['offsetX', 'offsetY', 'offsetZ'],
+        tangentIn: ['offsetTangentInX', 'offsetTangentInY', 'offsetTangentInZ'],
+        tangentOut: ['offsetTangentOutX', 'offsetTangentOutY', 'offsetTangentOutZ'],
+        widthIn: ['offsetTangentInWidthX', 'offsetTangentInWidthY', 'offsetTangentInWidthZ'],
+        widthOut: ['offsetTangentOutWidthX', 'offsetTangentOutWidthY', 'offsetTangentOutWidthZ'],
+        default: 0,
+    },
+    scale: {
+        interp: 'scaleInterp',
+        value: ['stretchX', 'stretchY', 'stretchZ'],
+        tangentIn: ['stretchTangentInX', 'stretchTangentInY', 'stretchTangentInZ'],
+        tangentOut: ['stretchTangentOutX', 'stretchTangentOutY', 'stretchTangentOutZ'],
+        widthIn: ['stretchTangentInWidthX', 'stretchTangentInWidthY', 'stretchTangentInWidthZ'],
+        widthOut: ['stretchTangentOutWidthX', 'stretchTangentOutWidthY', 'stretchTangentOutWidthZ'],
+        default: 1,
+    },
+};
+
+type ChannelFrameMap = Record<string, Record<BBImportChannel, number[]>>;
+
+// Collects, per bone and per channel, the sorted frames that actually set that channel, matching
+// the per-channel grouping the engine walks. Used to size each bezier segment for handle-width
+// recovery.
+function buildChannelFrames(vsAnimation: VS_Animation): ChannelFrameMap {
+    const map: ChannelFrameMap = {};
+    vsAnimation.keyframes.forEach(kf => {
+        for (const boneName in kf.elements) {
+            const transform = kf.elements[boneName];
+            const entry = map[boneName] || (map[boneName] = { rotation: [], position: [], scale: [] });
+            (Object.keys(IMPORT_CHANNELS) as BBImportChannel[]).forEach(channel => {
+                if (IMPORT_CHANNELS[channel].value.some(k => (transform as any)[k] != null)) {
+                    entry[channel].push(kf.frame);
+                }
+            });
+        }
+    });
+    for (const boneName in map) {
+        (Object.keys(map[boneName]) as BBImportChannel[]).forEach(channel => map[boneName][channel].sort((a, b) => a - b));
+    }
+    return map;
+}
+
+// Builds the Blockbench keyframe options for one channel of one VS keyframe element, restoring the
+// interpolation mode and (for bezier) the exact handle value+time deltas. Returns null when the
+// channel isn't present on this element.
+function buildChannelKeyframeOptions(
+    transform: VS_AnimationKey,
+    channel: BBImportChannel,
+    frame: number,
+    channelFrames: number[],
+    fps: number,
+): KeyframeOptions | null {
+    const cfg = IMPORT_CHANNELS[channel];
+    if (!cfg.value.some(k => (transform as any)[k] != null)) return null;
+
+    const value = {
+        x: (transform as any)[cfg.value[0]] ?? cfg.default,
+        y: (transform as any)[cfg.value[1]] ?? cfg.default,
+        z: (transform as any)[cfg.value[2]] ?? cfg.default,
+    };
+
+    const bbInterp = mapInterpolation((transform as any)[cfg.interp]);
+    const opts: KeyframeOptions = {
+        interpolation: bbInterp,
+        time: frame / fps,
+        channel,
+        data_points: [{ x: value.x, y: value.y, z: value.z }],
+    };
+
+    if (bbInterp === 'bezier') {
+        const { outDur, inDur } = segmentDurations(channelFrames, frame);
+        const right = reconstructHandle(transform, cfg.tangentOut, cfg.widthOut, outDur, +1, fps);
+        const left = reconstructHandle(transform, cfg.tangentIn, cfg.widthIn, inDur, -1, fps);
+        if (right) { opts.bezier_right_value = right.value; opts.bezier_right_time = right.time; }
+        if (left) { opts.bezier_left_value = left.value; opts.bezier_left_time = left.time; }
+    }
+
+    return opts;
+}
+
+// Lengths (in frames) of the segments adjacent to `frame` within a single channel's keyframe list.
+function segmentDurations(frames: number[], frame: number): { outDur: number, inDur: number } {
+    const i = frames.indexOf(frame);
+    if (i === -1) return { outDur: 0, inDur: 0 };
+    const prev = i > 0 ? frames[i - 1] : null;
+    const next = i < frames.length - 1 ? frames[i + 1] : null;
+    return {
+        outDur: next != null ? next - frame : 0,
+        inDur: prev != null ? frame - prev : 0,
+    };
+}
+
+// Inverts the export: from the engine tangent slope (value-per-segment-t) plus the handle width (in
+// frames) recover Blockbench's value delta and time delta (seconds): time = widthFrames/fps,
+// value = tangent * widthFrames / segmentFrames. A missing width falls back to the engine's
+// +/-(segmentFrames/3) default so the rebuilt BB curve matches the engine's render exactly. Returns
+// null when there's no adjacent segment (a boundary handle), leaving Blockbench's own default there.
+function reconstructHandle(
+    transform: VS_AnimationKey,
+    tangentFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
+    widthFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
+    segmentFrames: number,
+    sign: 1 | -1,
+    fps: number,
+): { value: ArrayVector3, time: ArrayVector3 } | null {
+    if (segmentFrames <= 0) return null;
+    const defaultWidth = sign * segmentFrames / 3;
+    const value: [number, number, number] = [0, 0, 0];
+    const time: [number, number, number] = [0, 0, 0];
+    for (let i = 0; i < 3; i++) {
+        const wRaw = (transform as any)[widthFields[i]];
+        const widthFrames = wRaw != null ? Number(wRaw) : defaultWidth;
+        const tRaw = (transform as any)[tangentFields[i]];
+        const tangent = tRaw != null ? Number(tRaw) : 0;
+        time[i] = widthFrames / fps;
+        value[i] = widthFrames !== 0 ? tangent * widthFrames / segmentFrames : 0;
+    }
+    return { value, time };
+}
+
+function mapInterpolation(interp: VS_KeyFrameInterpolation | undefined): 'linear' | 'bezier' | 'step' {
+    if (interp === 'Bezier') return 'bezier';
+    if (interp === 'Step') return 'step';
+    return 'linear';
+}

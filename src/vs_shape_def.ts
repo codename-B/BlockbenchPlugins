@@ -93,6 +93,14 @@ export interface VS_Keyframe {
 }
 
 /**
+ * Per-channel interpolation mode for the OUTGOING segment from this keyframe to
+ * the next. Linear is the default and matches the engine's legacy behaviour.
+ * Bezier is a cubic bezier defined by a tangent slope plus a handle width per axis;
+ * Step holds the previous value until the next keyframe.
+ */
+export type VS_KeyFrameInterpolation = "Linear" | "Bezier" | "Step"
+
+/**
  * Json Attributes also include
  * OriginX, OriginY, OriginZ
  * but they are not used by any VS shape files currently.
@@ -110,6 +118,58 @@ export interface VS_AnimationKey {
     stretchX?: number,
     stretchY?: number,
     stretchZ?: number,
+
+    positionInterp?: VS_KeyFrameInterpolation,
+    rotationInterp?: VS_KeyFrameInterpolation,
+    scaleInterp?: VS_KeyFrameInterpolation,
+
+    // Cubic bezier handle tangent slopes in value-per-segment-t units. Non-null only when
+    // the corresponding channel uses bezier interpolation.
+    offsetTangentInX?: number,
+    offsetTangentInY?: number,
+    offsetTangentInZ?: number,
+    offsetTangentOutX?: number,
+    offsetTangentOutY?: number,
+    offsetTangentOutZ?: number,
+
+    rotationTangentInX?: number,
+    rotationTangentInY?: number,
+    rotationTangentInZ?: number,
+    rotationTangentOutX?: number,
+    rotationTangentOutY?: number,
+    rotationTangentOutZ?: number,
+
+    stretchTangentInX?: number,
+    stretchTangentInY?: number,
+    stretchTangentInZ?: number,
+    stretchTangentOutX?: number,
+    stretchTangentOutY?: number,
+    stretchTangentOutZ?: number,
+
+    // Horizontal extent (in frames) of each bezier handle, mirroring Blockbench's
+    // bezier_*_time. Together with the tangent slope this pins the cubic control point so
+    // non-1/3 handle widths survive. Out-widths >= 0, in-widths <= 0. Omitted when equal to
+    // the +/-1/3-of-segment default (the engine then falls back to the glTF Hermite curve).
+    offsetTangentInWidthX?: number,
+    offsetTangentInWidthY?: number,
+    offsetTangentInWidthZ?: number,
+    offsetTangentOutWidthX?: number,
+    offsetTangentOutWidthY?: number,
+    offsetTangentOutWidthZ?: number,
+
+    rotationTangentInWidthX?: number,
+    rotationTangentInWidthY?: number,
+    rotationTangentInWidthZ?: number,
+    rotationTangentOutWidthX?: number,
+    rotationTangentOutWidthY?: number,
+    rotationTangentOutWidthZ?: number,
+
+    stretchTangentInWidthX?: number,
+    stretchTangentInWidthY?: number,
+    stretchTangentInWidthZ?: number,
+    stretchTangentOutWidthX?: number,
+    stretchTangentOutWidthY?: number,
+    stretchTangentOutWidthZ?: number,
 }
 
 /**
