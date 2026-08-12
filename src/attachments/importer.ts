@@ -5,6 +5,39 @@ import { handleVSTextures } from './texture_handler';
 
 const DEBUG = false;
 
+/**
+ * Minimal shapes for the parts of a .bbmodel this importer reads. Blockbench writes far more than
+ * this; everything here is deliberately loose because the file is user data that may come from an
+ * older Blockbench version, so each field is validated at the point of use rather than trusted.
+ */
+
+/** A face's texture is written either as an index into `textures` or as a texture uuid. */
+type TextureRef = string | number;
+
+interface BBTextureData {
+    name?: string;
+    path?: string;
+    uuid?: string;
+    [key: string]: unknown;
+}
+
+interface BBCubeElement {
+    uuid: string;
+    type: 'cube';
+    [key: string]: unknown;
+}
+
+/** Outliner entries are either a bare element uuid (Blockbench 4.x) or an inline group object. */
+type BBOutlinerItem = string | Record<string, any>;
+
+interface BBModel {
+    elements?: unknown;
+    groups?: unknown;
+    outliner?: unknown;
+    textures?: unknown;
+    [key: string]: unknown;
+}
+
 function logDebug(message: string, ...args: any[]) {
     if (DEBUG) console.log(message, ...args);
 }

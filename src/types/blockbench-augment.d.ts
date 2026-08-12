@@ -53,6 +53,14 @@ declare global {
     interface ModelFormat {
         animation_codec?: AnimationCodec;
     }
+
+    /**
+     * Blockbench's desktop-only escape hatch to Node's require. Missing from blockbench-types,
+     * so every call site otherwise needs its own @ts-expect-error.
+     */
+    function requireNativeModule(name: 'fs'): typeof import('fs');
+    function requireNativeModule(name: 'path'): typeof import('path');
+    function requireNativeModule(name: string): any;
 }
 
 export {};
