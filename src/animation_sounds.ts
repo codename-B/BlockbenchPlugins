@@ -90,14 +90,18 @@ export function sound_location_for_file(filePath: string): string | null {
     return `${match[1]}:${without_extension(match[2])}`;
 }
 
-/** The VS asset location a Blockbench sound data point should export as. */
+/**
+ * The VS asset location a Blockbench sound data point should export as.
+ *
+ * The effect code wins over the picked file. The file is only a local preview, and a code can say
+ * things a single file cannot, most importantly the `*` wildcard VS uses to pick a random variant
+ * (bruister_peck_* covering bruister_peck_1/2/3). Deriving the location from the file would silently
+ * collapse that to whichever variant happened to be picked.
+ */
 function sound_location_for_data_point(dp: KeyframeDataPointData): string | null {
-    const fromFile = dp.file ? sound_location_for_file(dp.file) : null;
-    if (fromFile) return fromFile;
-    // Hand-typed effect names are treated as asset locations so authors can reference sounds
-    // that live outside the project folder.
     const effect = (dp.effect || '').trim();
-    return effect || null;
+    if (effect) return effect;
+    return dp.file ? sound_location_for_file(dp.file) : null;
 }
 
 /** Converts one Blockbench sound data point to a VS keyframe sound, or null if it has no target. */
@@ -119,9 +123,37 @@ function sound_file_for_location(location: string): string | null {
     const path = colon >= 0 ? location.slice(colon + 1) : location;
     if (!path) return null;
 
+    // A `*` marks a random-variant set (bruister_peck_* -> bruister_peck_1/2/3). Preview the
+    // first variant, since Blockbench can only play one file.
+    const concrete = path.split('*').join('1');
+    const soundsRoot = `${ctx.assetsRoot}/${domain}/sounds`;
+
     for (const ext of SOUND_EXTENSIONS) {
-        const candidate = `${ctx.assetsRoot}/${domain}/sounds/${path}${ext}`;
+        const candidate = `${soundsRoot}/${concrete}${ext}`;
         if (fs.existsSync(candidate)) return candidate;
+    }
+
+    // Codes are often short names rather than full paths (bruister_peck_* for
+    // entity/bruister/bruister_peck_1.ogg), so fall back to searching the sounds tree.
+    return find_sound_by_name(soundsRoot, concrete.split('/').pop() ?? concrete);
+}
+
+/** Depth-first search for `<name><ext>` under the sounds folder. */
+function find_sound_by_name(dir: string, name: string, depth = 0): string | null {
+    if (depth > 6 || !fs.existsSync(dir)) return null;
+
+    let entries: any[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return null; }
+
+    for (const entry of entries) {
+        if (entry.isFile() && SOUND_EXTENSIONS.some(ext => entry.name.toLowerCase() === name.toLowerCase() + ext)) {
+            return `${dir}/${entry.name}`;
+        }
+    }
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const found = find_sound_by_name(`${dir}/${entry.name}`, name, depth + 1);
+        if (found) return found;
     }
     return null;
 }
