@@ -1,5 +1,6 @@
 import * as util from "./util";
 import { VS_Animation, VS_AnimationKey, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { particle_data_point } from "./animation_particles";
 
 /**
  * Creates one Blockbench animation from a VS animation definition and returns it.
@@ -47,7 +48,7 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
             effects.addKeyframe({
                 channel: 'particle',
                 time: vsKeyframe.frame / FPS,
-                data_points: vsKeyframe.particles.map(p => ({ effect: p.effect, locator: p.atAttachmentPoint || '' })),
+                data_points: vsKeyframe.particles.map(p => particle_data_point(p.effect, p.atAttachmentPoint)),
             });
         }
 
