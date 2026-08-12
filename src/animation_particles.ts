@@ -58,7 +58,7 @@ export function resolve_particle_effect(effectCode: string): string | null {
     // Registering the same path twice is harmless; Blockbench replaces the config in place.
     if (!Animator.particle_effects[file]) {
         try {
-            Animator.loadParticleEmitter(file, fs.readFileSync(file, 'utf-8'));
+            Animator.loadParticleEmitter(file, namespace_components(fs.readFileSync(file, 'utf-8')));
         } catch (e) {
             console.warn(`[VS Particles] Could not load emitter "${file}":`, e);
             resolvedEffects.set(code, null);
@@ -68,6 +68,28 @@ export function resolve_particle_effect(effectCode: string): string | null {
 
     resolvedEffects.set(code, file);
     return file;
+}
+
+/**
+ * Adds the `minecraft:` namespace to component names that lack one.
+ *
+ * Wintersky, which drives Blockbench's particle preview, looks every component up as
+ * `components["minecraft:" + name]`. VS effects are written with bare names, so without this every
+ * lookup misses and the emitter is built with no rate, shape, lifetime or appearance: registered,
+ * linked, and completely inert. Only `components` is touched, since `curves` and `events` are
+ * author-named in Bedrock too. The file on disk is left alone.
+ */
+function namespace_components(content: string): string {
+    const json = JSON.parse(content);
+    const components = json?.particle_effect?.components;
+    if (!components) return content;
+
+    const namespaced: Record<string, unknown> = {};
+    for (const [name, value] of Object.entries(components)) {
+        namespaced[name.includes(':') ? name : `minecraft:${name}`] = value;
+    }
+    json.particle_effect.components = namespaced;
+    return JSON.stringify(json);
 }
 
 /** Builds one Blockbench particle data point, with a preview file attached when we can find one. */
