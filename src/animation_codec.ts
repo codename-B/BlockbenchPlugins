@@ -143,6 +143,9 @@ function write_animation_to_library(animation: _Animation): void {
         animation.saved = true;
         animation.saved_name = animation.name;
         animation.path = real_path;
+        // Visible confirmation — a silently skipped save (e.g. clicking a greyed-out button)
+        // is indistinguishable from a successful one without this.
+        Blockbench.showQuickMessage(`Saved "${animation.name}" to ${basename_no_ext(real_path)}.json`, 2000);
     });
 }
 
@@ -177,8 +180,15 @@ function export_file(path: string, save_as?: boolean): void {
     if (animations.length === 0) return;
 
     if (!save_as && filterPath && fs.existsSync(filterPath)) {
-        // Existing file: merge each unsaved animation back into it.
-        animations.forEach(a => { if (!a.saved) a.save(); });
+        // Existing file: recompile and merge EVERY loaded animation, not just the unsaved ones.
+        // The native "Export Animations…" menu always recompiles every animation through
+        // compile_file, so skipping saved siblings here left their (possibly non-canonical)
+        // on-disk bytes in place — making the Save button and Export diverge for hand- or
+        // engine-authored library files. Routing all of them through save() (which merges via
+        // write_animation_to_library → compile_animation) makes the two paths emit byte-identical
+        // keyframe/bezier data, while the merge still preserves on-disk animations that aren't
+        // loaded into the project.
+        animations.forEach(a => a.save());
         return;
     }
 

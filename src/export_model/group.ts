@@ -95,13 +95,16 @@ export function process_group(
 
         // Skip properties with default/empty values
         if (value !== undefined && value !== null && value !== '' && value !== false) {
-            vsElement[prop_name] = value;
+            const exportedValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'paletteSlot' && exportedValue === 0) continue;
+            vsElement[prop_name] = exportedValue;
         }
     }
 
     // Also export VS_CUBE_PROPS stored on group-like elements (e.g. unwrapMode on eyesroot)
     for (const prop of VS_CUBE_PROPS) {
         const prop_name = prop.name;
+        if (VS_GROUP_PROPS.some(groupProp => groupProp.name === prop_name)) continue;
         const value = node[prop_name];
         if (prop_name === 'shade') {
             if (value !== undefined && value !== true) {
@@ -115,6 +118,7 @@ export function process_group(
             if (prop_name === 'renderPass' && numValue === -1) continue;
             if (prop_name === 'unwrapMode' && numValue === 0) continue;
             if (prop_name === 'unwrapRotation' && numValue === 0) continue;
+            if (prop_name === 'paletteSlot' && numValue === 0) continue;
             vsElement[prop_name] = numValue;
         }
     }
@@ -202,13 +206,22 @@ export function process_collapsed_group(
         const prop_name = prop.name;
         const value = node[prop_name];
         if (value !== undefined && value !== null && value !== '' && value !== false) {
-            vsElement[prop_name] = value;
+            const exportedValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'paletteSlot' && exportedValue === 0) continue;
+            vsElement[prop_name] = exportedValue;
         }
+    }
+
+    const groupPaletteSlot = Number(node.paletteSlot) || 0;
+    const geometryPaletteSlot = Number(geoChild.paletteSlot) || 0;
+    if (groupPaletteSlot === 0 && geometryPaletteSlot !== 0) {
+        vsElement.paletteSlot = geometryPaletteSlot;
     }
 
     // Copy VS_CUBE_PROPS from the _geo cube (e.g. shade, climateColorMap, unwrapMode)
     for (const prop of VS_CUBE_PROPS) {
         const prop_name = prop.name;
+        if (VS_GROUP_PROPS.some(groupProp => groupProp.name === prop_name)) continue;
         const value = geoChild[prop_name];
         if (prop_name === 'shade') {
             if (value !== true) {
@@ -226,6 +239,9 @@ export function process_collapsed_group(
                 continue;
             }
             if (prop_name === 'unwrapRotation' && numValue === 0) {
+                continue;
+            }
+            if (prop_name === 'paletteSlot' && numValue === 0) {
                 continue;
             }
             vsElement[prop_name] = numValue;

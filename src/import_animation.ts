@@ -16,7 +16,7 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
     const animation = ((new Animation({
         //@ts-expect-error: Blockbench overwrites libdom's Animation type with its own Animation Class, but TypeScript doesn't include a way to overwrite UMD global types.
         name: vsAnimation.name,
-        loop: isLooping ? 'loop' : 'once',
+        loop: isLooping ? 'loop' : (vsAnimation.onAnimationEnd === 'Hold' ? 'hold' : 'once'),
         length: animationLength,
         snapping: FPS
     }) as unknown) as _Animation).add();
@@ -41,6 +41,17 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
     const channelFrames = buildChannelFrames(vsAnimation);
 
     vsAnimation.keyframes.forEach(vsKeyframe => {
+        // Particle triggers live on the effect animator (Blockbench's Effects > Particle channel)
+        if (vsKeyframe.particles && vsKeyframe.particles.length > 0) {
+            // Accessing .effects auto-creates the EffectAnimator (Blockbench animators proxy)
+            const effects = (animation.animators as any).effects;
+            effects.addKeyframe({
+                channel: 'particle',
+                time: vsKeyframe.frame / FPS,
+                data_points: vsKeyframe.particles.map(p => ({ effect: p.effect, locator: p.atAttachmentPoint || '' })),
+            });
+        }
+
         for (const boneName in vsKeyframe.elements) {
             const transform = vsKeyframe.elements[boneName];
             const bone = Group.all.find(g => g.name === boneName);

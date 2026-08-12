@@ -103,9 +103,27 @@ function remapCubeFaceTextures(cubeProps: Record<string, any>, textureMap: Map<T
     }
 }
 
-function createCubeFromElementData(elemData: BBCubeElement, parentGroup: any, textureMap: Map<TextureRef, any>) {
+function normalizePaletteSlot(value: unknown): number {
+    const slot = Number(value);
+    return Number.isFinite(slot) && slot !== 0 ? slot : 0;
+}
+
+function createCubeFromElementData(
+    elemData: BBCubeElement,
+    parentGroup: any,
+    textureMap: Map<TextureRef, any>,
+    createdGroups: Set<Group>,
+    inheritedPaletteSlot = 0,
+) {
     const cubeProps: Record<string, any> = { ...elemData };
     delete cubeProps.uuid;
+
+    // A source attachment can put paletteSlot on a structural group that is
+    // merged into an existing base-model bone. Keep that inheritance on the
+    // newly imported geometry instead of tinting the reused base bone.
+    if (normalizePaletteSlot(cubeProps.paletteSlot) === 0 && inheritedPaletteSlot !== 0) {
+        cubeProps.paletteSlot = inheritedPaletteSlot;
+    }
 
     remapCubeFaceTextures(cubeProps, textureMap);
 
@@ -113,12 +131,14 @@ function createCubeFromElementData(elemData: BBCubeElement, parentGroup: any, te
     // If the cube has a clothingSlot, propagate it up the hierarchy to parent groups.
     // Stop when we reach a parent that already has a clothingSlot (this is a boundary - either
     // an existing attachment group or a base model group that has been marked).
-    // Then clear clothingSlot from the cube since cubes should inherit from their parent group.
+    // Keep the cube value as well: the attachment exporter treats an explicit
+    // different slot as a boundary, and the discovery panel de-duplicates
+    // descendants that inherit the same slot.
     const cubeClothingSlot = cubeProps.clothingSlot;
     if (cubeClothingSlot && typeof cubeClothingSlot === 'string' && cubeClothingSlot.trim() !== '') {
         // Propagate clothingSlot up the hierarchy, but stop at boundaries
         let currentGroup: any = parentGroup;
-        while (currentGroup && currentGroup instanceof Group) {
+        while (currentGroup && currentGroup instanceof Group && createdGroups.has(currentGroup)) {
             const existingSlot = currentGroup.clothingSlot;
             // If this group already has a clothingSlot, stop propagation (we've hit a boundary)
             if (existingSlot && existingSlot.trim() !== '') {
@@ -131,9 +151,6 @@ function createCubeFromElementData(elemData: BBCubeElement, parentGroup: any, te
             // Move up to the parent group
             currentGroup = currentGroup.parent;
         }
-        // Clear clothingSlot from the cube to prevent it from being detected as a separate attachment
-        delete cubeProps.clothingSlot;
-        logDebug(`[Import BB] Cleared clothingSlot from cube: ${cubeProps.name ?? '(unnamed)'}`);
     }
 
     const cube = new Cube(cubeProps);
@@ -154,24 +171,38 @@ function findExistingGroupByName(parentGroup: any, groupName: string): any | nul
     return null;
 }
 
-function getOrCreateGroup(groupSeed: Record<string, any>, parentGroup: any): any {
+function getOrCreateGroup(
+    groupSeed: Record<string, any>,
+    parentGroup: any,
+    createdGroups: Set<Group>,
+    inheritedPaletteSlot = 0,
+): { group: any; childPaletteSlot: number } {
     const groupName = typeof groupSeed.name === 'string' ? groupSeed.name : '';
+    const hasExternalStepParent = typeof groupSeed.stepParentName === 'string' && groupSeed.stepParentName.trim() !== '';
+    const ownPaletteSlot = normalizePaletteSlot(groupSeed.paletteSlot);
+    const childPaletteSlot = ownPaletteSlot || inheritedPaletteSlot;
 
-    const existing = findExistingGroupByName(parentGroup, groupName);
+    // An explicit step-parent group is an attachment wrapper, not a duplicate
+    // of the base socket with the same name.
+    const existing = hasExternalStepParent ? null : findExistingGroupByName(parentGroup, groupName);
     if (existing) {
         logDebug(`[Import BB] Merging into existing group: ${groupName}`);
-        return existing;
+        return { group: existing, childPaletteSlot };
     }
 
     const groupProps: Record<string, any> = { ...groupSeed };
     delete groupProps.uuid;
     delete groupProps.children;
+    if (ownPaletteSlot === 0 && inheritedPaletteSlot !== 0) {
+        groupProps.paletteSlot = inheritedPaletteSlot;
+    }
 
     const group = new Group(groupProps);
     group.addTo(parentGroup).init();
+    createdGroups.add(group);
     logDebug(`[Import BB] Created new group: ${groupName || '(unnamed group)'}`);
 
-    return group;
+    return { group, childPaletteSlot };
 }
 
 function isCubeElement(value: unknown): value is BBCubeElement {
@@ -188,8 +219,19 @@ function isCubeElement(value: unknown): value is BBCubeElement {
  * @param filePath The path to the file being imported, used for clothing slot inference.
  */
 export function mergeVSAttachment(content: VS_Shape, filePath?: string) {
+    const elementsBefore = new Set<any>([...Group.all, ...Cube.all]);
     handleVSTextures(content);
-    import_model(content, false, filePath);
+    // Attachment roots are already expressed in their step parent's local space.
+    // Applying the normal block-model [-8, 0, -8] offset corrupts that transform.
+    import_model(content, false, filePath, { rootOffset: [0, 0, 0] });
+
+    for (const element of [...Group.all, ...Cube.all]) {
+        if (elementsBefore.has(element)) continue;
+        const parentIsNew = element.parent instanceof Group && !elementsBefore.has(element.parent);
+        if (!parentIsNew && element.stepParentName?.trim()) {
+            element.vs_step_parent_local = true;
+        }
+    }
 }
 
 /**
@@ -210,58 +252,64 @@ export function mergeBBModel(content: unknown, _filePath: string) {
         const textureMap = buildTextureMap(model);
         const elementByUuid = buildUuidMap<Record<string, any>>(model.elements);
         const groupByUuid = buildUuidMap<Record<string, any>>(model.groups);
-        const processChildren = (children: BBOutlinerItem[], parent: any) => {
-            for (const child of children) processOutlinerItem(child, parent);
+        const createdGroups = new Set<Group>();
+        const processChildren = (children: BBOutlinerItem[], parent: any, inheritedPaletteSlot = 0) => {
+            for (const child of children) processOutlinerItem(child, parent, inheritedPaletteSlot);
         };
 
-        const tryCreateCubeByUuid = (uuid: UUID, parent: any): boolean => {
+        const tryCreateCubeByUuid = (uuid: UUID, parent: any, inheritedPaletteSlot = 0): boolean => {
             const elemData = elementByUuid.get(uuid);
             if (!isCubeElement(elemData)) return false;
-            createCubeFromElementData(elemData, parent, textureMap);
+            createCubeFromElementData(elemData, parent, textureMap, createdGroups, inheritedPaletteSlot);
             return true;
         };
 
-        const tryProcessGroupByUuid = (uuid: UUID, node: Record<string, any>, parent: any): boolean => {
+        const tryProcessGroupByUuid = (
+            uuid: UUID,
+            node: Record<string, any>,
+            parent: any,
+            inheritedPaletteSlot = 0,
+        ): boolean => {
             const groupData = groupByUuid.get(uuid);
             if (!groupData) return false;
 
             // Merge groupMap data with outliner hints (e.g., children structure)
             const seed = { ...groupData, ...node };
-            const targetGroup = getOrCreateGroup(seed, parent);
+            const { group: targetGroup, childPaletteSlot } = getOrCreateGroup(seed, parent, createdGroups, inheritedPaletteSlot);
 
             const children = asArray<BBOutlinerItem>(node.children);
-            processChildren(children, targetGroup);
+            processChildren(children, targetGroup, childPaletteSlot);
             return true;
         };
 
-        const processUuidStringItem = (uuid: UUID, parent: any) => {
+        const processUuidStringItem = (uuid: UUID, parent: any, inheritedPaletteSlot = 0) => {
             // Blockbench 4.x: element references are UUID strings
-            if (tryCreateCubeByUuid(uuid, parent)) return;
+            if (tryCreateCubeByUuid(uuid, parent, inheritedPaletteSlot)) return;
         };
 
-        const processInlineGroupNode = (node: Record<string, any>, parent: any) => {
-            const targetGroup = getOrCreateGroup(node, parent);
+        const processInlineGroupNode = (node: Record<string, any>, parent: any, inheritedPaletteSlot = 0) => {
+            const { group: targetGroup, childPaletteSlot } = getOrCreateGroup(node, parent, createdGroups, inheritedPaletteSlot);
             const children = asArray<BBOutlinerItem>(node.children);
-            processChildren(children, targetGroup);
+            processChildren(children, targetGroup, childPaletteSlot);
         };
 
-        const processObjectNode = (node: Record<string, any>, parent: any) => {
+        const processObjectNode = (node: Record<string, any>, parent: any, inheritedPaletteSlot = 0) => {
             const uuid = typeof node.uuid === 'string' ? node.uuid : undefined;
 
             // Blockbench 5.x+: outliner node references separate `elements` / `groups` lists by UUID.
             if (uuid) {
-                if (tryCreateCubeByUuid(uuid, parent)) return;
-                if (tryProcessGroupByUuid(uuid, node, parent)) return;
+                if (tryCreateCubeByUuid(uuid, parent, inheritedPaletteSlot)) return;
+                if (tryProcessGroupByUuid(uuid, node, parent, inheritedPaletteSlot)) return;
             }
 
             // Blockbench 4.x: the node itself is an inline group object
-            processInlineGroupNode(node, parent);
+            processInlineGroupNode(node, parent, inheritedPaletteSlot);
         };
 
-        const processOutlinerItem = (item: BBOutlinerItem, parent: any) => {
-            if (typeof item === 'string') return processUuidStringItem(item, parent);
+        const processOutlinerItem = (item: BBOutlinerItem, parent: any, inheritedPaletteSlot = 0) => {
+            if (typeof item === 'string') return processUuidStringItem(item, parent, inheritedPaletteSlot);
             if (!isRecord(item)) return;
-            return processObjectNode(item, parent);
+            return processObjectNode(item, parent, inheritedPaletteSlot);
         };
 
         for (const item of asArray<BBOutlinerItem>(model.outliner)) {
