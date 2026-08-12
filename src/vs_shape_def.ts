@@ -11,6 +11,19 @@ export interface VS_Shape {
     textures: Record<string, string>,
     elements: Array<VS_Element>,
     animations?: Array<VS_Animation>,
+    animationLibraries?: Array<string>,
+}
+
+/**
+ * Standalone animation library file format. Mirrors the C# AnimationLibrary class.
+ * Library files live under `assets/<domain>/animations/<path>.json` and are referenced
+ * from a Shape's `animationLibraries` property. The host shape merges library animations
+ * into its own `Animations[]` at load time, keyed by `Animation.code`.
+ */
+export interface VS_AnimationLibrary {
+    code?: string,
+    name?: string,
+    animations: Array<VS_Animation>,
 }
 
 export interface VS_EditorSettings {
@@ -37,6 +50,7 @@ export interface VS_Element {
     climateColorMap?: string,
     gradientShade?: boolean,
     renderPass?: number,
+    paletteSlot?: number,
     seasonColorMap?: string,
     shade?: boolean,
     uv?: [number,number],
@@ -90,7 +104,27 @@ export interface VS_Keyframe {
     frame: number,
     elements: Record<string, VS_AnimationKey>,
     textures?: Record<string, string>,
+    particles?: Array<VS_AnimationParticle>,
 }
+
+/**
+ * A one-shot particle effect trigger on a keyframe. Read by GlintMod's snowstorm
+ * particle system (SnowstormAnimationParticles); the base game ignores it.
+ */
+export interface VS_AnimationParticle {
+    /** Snowstorm particle effect identifier, e.g. "bruister_feathers" */
+    effect: string,
+    /** Attachment point (Blockbench locator) the effect spawns at; entity center when omitted */
+    atAttachmentPoint?: string,
+}
+
+/**
+ * Per-channel interpolation mode for the OUTGOING segment from this keyframe to
+ * the next. Linear is the default and matches the engine's legacy behaviour.
+ * Bezier is a cubic bezier defined by a tangent slope plus a handle width per axis;
+ * Step holds the previous value until the next keyframe.
+ */
+export type VS_KeyFrameInterpolation = "Linear" | "Bezier" | "Step"
 
 /**
  * Json Attributes also include
@@ -110,6 +144,58 @@ export interface VS_AnimationKey {
     stretchX?: number,
     stretchY?: number,
     stretchZ?: number,
+
+    positionInterp?: VS_KeyFrameInterpolation,
+    rotationInterp?: VS_KeyFrameInterpolation,
+    scaleInterp?: VS_KeyFrameInterpolation,
+
+    // Cubic bezier handle tangent slopes in value-per-segment-t units. Non-null only when
+    // the corresponding channel uses bezier interpolation.
+    offsetTangentInX?: number,
+    offsetTangentInY?: number,
+    offsetTangentInZ?: number,
+    offsetTangentOutX?: number,
+    offsetTangentOutY?: number,
+    offsetTangentOutZ?: number,
+
+    rotationTangentInX?: number,
+    rotationTangentInY?: number,
+    rotationTangentInZ?: number,
+    rotationTangentOutX?: number,
+    rotationTangentOutY?: number,
+    rotationTangentOutZ?: number,
+
+    stretchTangentInX?: number,
+    stretchTangentInY?: number,
+    stretchTangentInZ?: number,
+    stretchTangentOutX?: number,
+    stretchTangentOutY?: number,
+    stretchTangentOutZ?: number,
+
+    // Horizontal extent (in frames) of each bezier handle, mirroring Blockbench's
+    // bezier_*_time. Together with the tangent slope this pins the cubic control point so
+    // non-1/3 handle widths survive. Out-widths >= 0, in-widths <= 0. Omitted when equal to
+    // the +/-1/3-of-segment default (the engine then falls back to the glTF Hermite curve).
+    offsetTangentInWidthX?: number,
+    offsetTangentInWidthY?: number,
+    offsetTangentInWidthZ?: number,
+    offsetTangentOutWidthX?: number,
+    offsetTangentOutWidthY?: number,
+    offsetTangentOutWidthZ?: number,
+
+    rotationTangentInWidthX?: number,
+    rotationTangentInWidthY?: number,
+    rotationTangentInWidthZ?: number,
+    rotationTangentOutWidthX?: number,
+    rotationTangentOutWidthY?: number,
+    rotationTangentOutWidthZ?: number,
+
+    stretchTangentInWidthX?: number,
+    stretchTangentInWidthY?: number,
+    stretchTangentInWidthZ?: number,
+    stretchTangentOutWidthX?: number,
+    stretchTangentOutWidthY?: number,
+    stretchTangentOutWidthZ?: number,
 }
 
 /**

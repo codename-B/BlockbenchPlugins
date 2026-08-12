@@ -9,6 +9,7 @@ import PACKAGE from "../package.json";
 // Actions
 import "./debug_actions";
 import "./actions";
+import "./animation_actions";
 
 // Properties
 import "./property";
@@ -20,7 +21,6 @@ import "./mods/settingsMod";
 import "./mods/legacyFormatConverterMod";
 import "./mods/nodePreviewControllerMod";
 import "./mods/attachmentsMod";
-import "./mods/ik/index";
 
 // Panels (loaded after mods to avoid blocking critical format registration)
 import "./panels/vs_face_panel";
