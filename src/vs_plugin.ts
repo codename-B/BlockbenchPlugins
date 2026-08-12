@@ -9,6 +9,7 @@ import PACKAGE from "../package.json";
 // Actions
 import "./debug_actions";
 import "./actions";
+import "./animation_actions";
 
 // Properties
 import "./property";

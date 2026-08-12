@@ -236,3 +236,13 @@ function mapInterpolation(interp: VS_KeyFrameInterpolation | undefined): 'linear
     if (interp === 'Step') return 'step';
     return 'linear';
 }
+
+/**
+ * Removes every animation from the current project. Returns the count removed.
+ * Animations created in this call go onto the undo stack so the user can revert.
+ */
+export function clear_animations(): number {
+    const all = (Animation as unknown as typeof _Animation).all.slice();
+    all.forEach(a => a.remove(true));
+    return all.length;
+}
