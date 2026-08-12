@@ -100,8 +100,22 @@ export function sound_location_for_file(filePath: string): string | null {
  */
 function sound_location_for_data_point(dp: KeyframeDataPointData): string | null {
     const effect = (dp.effect || '').trim();
-    if (effect) return effect;
-    return dp.file ? sound_location_for_file(dp.file) : null;
+    if (!effect) return dp.file ? sound_location_for_file(dp.file) : null;
+
+    // Already a full location, so take it as authored.
+    if (effect.includes(':') || effect.includes('/')) return effect;
+
+    // A bare name like "bruister_peck_*" is not resolvable on its own: VS would read it as
+    // game:bruister_peck_*. Borrow the domain and folder from the file the preview resolved to,
+    // keeping the authored name so a trailing wildcard survives (VS expands those itself, see
+    // SoundEngine.EndsWithWildCard).
+    const fromFile = dp.file ? sound_location_for_file(dp.file) : null;
+    if (!fromFile) return effect;
+
+    const colon = fromFile.indexOf(':');
+    const domain = fromFile.slice(0, colon);
+    const folder = fromFile.slice(colon + 1).split('/').slice(0, -1).join('/');
+    return folder ? `${domain}:${folder}/${effect}` : `${domain}:${effect}`;
 }
 
 /** Converts one Blockbench sound data point to a VS keyframe sound, or null if it has no target. */
