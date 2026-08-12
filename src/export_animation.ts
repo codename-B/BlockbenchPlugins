@@ -26,7 +26,7 @@ export function export_animations(): Array<VS_Animation> {
 
         animators.forEach(animator => {
             if (animator.type === 'bone' && animator.keyframes && animator.keyframes.length > 0) {
-                // Skip NullObject animators (IK controllers) — they don't exist as VS elements
+                // Skip NullObject animators; they have no corresponding VS element
                 if (typeof NullObject !== 'undefined' && NullObject.all?.some((n: any) => n.uuid === animator.uuid)) {
                     return;
                 }
