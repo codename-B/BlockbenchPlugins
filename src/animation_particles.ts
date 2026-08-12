@@ -14,6 +14,7 @@ import { parse_model_location } from "./animation_library_paths";
 import { is_vs_project } from "./util";
 
 const fs = requireNativeModule('fs');
+const nodePath = requireNativeModule('path');
 
 /** Effect codes already resolved this session: code -> file path, or null when unresolvable. */
 const resolvedEffects = new Map<string, string | null>();
@@ -23,7 +24,14 @@ export function clear_particle_cache(): void {
     resolvedEffects.clear();
 }
 
-/** `<assets>/<domain>/particles/<path>.json` for an effect code, using the project's asset root. */
+/**
+ * `<assets>/<domain>/particles/<path>.json` for an effect code, using the project's asset root.
+ *
+ * Returned with native separators. Blockbench finds an effect's texture by splitting this path on
+ * the platform separator, locating the "particles" segment and treating everything above it as the
+ * pack root. A forward-slash path on Windows splits into a single segment, so that search fails and
+ * every particle falls back to the placeholder texture.
+ */
 function particle_file_for(effectCode: string): string | null {
     const modelPath = Project?.save_path || Project?.export_path;
     if (!modelPath) return null;
@@ -35,7 +43,7 @@ function particle_file_for(effectCode: string): string | null {
     const path = colon >= 0 ? effectCode.slice(colon + 1) : effectCode;
     if (!path) return null;
 
-    return `${ctx.assetsRoot}/${domain}/particles/${path}.json`;
+    return nodePath.join(ctx.assetsRoot, domain, 'particles', `${path}.json`);
 }
 
 /**
