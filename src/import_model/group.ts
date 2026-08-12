@@ -57,6 +57,7 @@ export function process_group(parent: Group | null, object_space_pos: [number,nu
     // (e.g. elements with from≠to but empty faces, like "eyesroot")
     for (const prop of VS_CUBE_PROPS) {
         const prop_name = prop.name;
+        if (VS_GROUP_PROPS.some(groupProp => groupProp.name === prop_name)) continue;
         if (prop_name === 'shade') continue;
         if (vsElement[prop_name] !== undefined) {
             group[prop_name] = vsElement[prop_name];

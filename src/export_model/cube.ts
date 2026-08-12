@@ -42,6 +42,9 @@ export function process_cube(parent: Group | null, node: Cube, accu: Array<VS_El
             if (prop_name === 'unwrapRotation' && numValue === 0) {
                 continue;
             }
+            if (prop_name === 'paletteSlot' && numValue === 0) {
+                continue;
+            }
             vsElement[prop_name] = numValue;
         }
     }

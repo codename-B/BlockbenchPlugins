@@ -52,6 +52,37 @@ function registerOptionalInternalProperty(
     });
 }
 
+const PALETTE_SLOT_OPTIONS = {
+    '0': '0 - Inherit / Default',
+    '1': '1',
+    '2': '2',
+    '3': '3',
+    '4': '4',
+    '5': '5',
+    '6': '6',
+    '7': '7',
+};
+
+function registerPaletteSlotProperty(targetClass: any) {
+    const property = new Property(targetClass, 'number', 'paletteSlot', {
+        default: 0,
+        label: 'Palette Slot',
+        exposed: true,
+        options: PALETTE_SLOT_OPTIONS,
+        inputs: {
+            element_panel: {
+                input: {
+                    label: 'Palette Slot',
+                    type: 'select',
+                    options: PALETTE_SLOT_OPTIONS,
+                },
+            },
+        },
+    });
+
+    return property;
+}
+
 export const VS_GROUP_PROPS = [
     new Property(Group, "string", "stepParentName", {
         default: '',
@@ -70,6 +101,7 @@ export const VS_GROUP_PROPS = [
             Canvas.updateAllPositions();
         },
     }),
+    registerPaletteSlotProperty(Group),
 ];
 
 // Blockbench-only properties (not exported to VS JSON format)
@@ -142,6 +174,7 @@ export const VS_CUBE_PROPS = [
             Canvas.updateAllPositions();
         },
     }),
+    registerPaletteSlotProperty(Cube),
     new Property(Cube, "boolean", "shade", {
         default: true,
         label: "Shade",
@@ -361,6 +394,7 @@ declare global {
 
     interface Group {
         stepParentName?: string;
+        paletteSlot?: number;
         clothingSlot?: string;
         backdrop?: boolean;
         vs_group_from?: [number, number, number];
@@ -372,6 +406,7 @@ declare global {
 
     interface Cube {
         stepParentName?: string;
+        paletteSlot?: number;
         clothingSlot?: string;
         climateColorMap?: string;
         gradientShade?: boolean;

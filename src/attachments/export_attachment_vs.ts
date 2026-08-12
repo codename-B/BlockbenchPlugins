@@ -250,7 +250,9 @@ function process_attachment_group(
 
         // Skip properties with default/empty values
         if (value !== undefined && value !== null && value !== '' && value !== false) {
-            vsElement[prop_name] = value;
+            const exportedValue = prop.type === 'number' ? Number(value) : value;
+            if (prop_name === 'paletteSlot' && exportedValue === 0) continue;
+            vsElement[prop_name] = exportedValue;
         }
     }
 

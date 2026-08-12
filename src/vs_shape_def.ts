@@ -37,6 +37,7 @@ export interface VS_Element {
     climateColorMap?: string,
     gradientShade?: boolean,
     renderPass?: number,
+    paletteSlot?: number,
     seasonColorMap?: string,
     shade?: boolean,
     uv?: [number,number],

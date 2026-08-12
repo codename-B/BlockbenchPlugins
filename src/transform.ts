@@ -68,6 +68,7 @@ export function expand_complex_element(complex: VS_Element): VS_Element {
         rotationZ: 0,
         to: vector_sub(complex.to, complex.from),
         stepParentName: undefined,
+        paletteSlot: undefined,
         attachmentpoints: undefined,
         children: [],
         name: `${complex.name}_geo`
