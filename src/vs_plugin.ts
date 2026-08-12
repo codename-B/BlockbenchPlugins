@@ -18,6 +18,7 @@ import "./mods/formatMod";
 import "./mods/settingsMod";
 import "./mods/legacyFormatConverterMod";
 import "./mods/nodePreviewControllerMod";
+import "./mods/effectAnimatorMod";
 import "./mods/attachmentsMod";
 
 // Panels (loaded after mods to avoid blocking critical format registration)

@@ -121,6 +121,27 @@ Blockbench.on('load_project', () => {
 });
 
 /**
+ * Links any particle data point on this animator that has an effect code but no emitter yet.
+ *
+ * Called from the render path rather than on a project-load event, because `load_project` fires
+ * before the project is ready (see the 100ms deferral in attachments.ts). Being demand-driven
+ * means it cannot run too early. Already-linked points cost a property check, and the resolver
+ * caches, so repeat frames do no real work.
+ */
+export function ensure_particle_links(animator: any): void {
+    const keyframes = animator?.particle;
+    if (!keyframes?.length) return;
+
+    for (const keyframe of keyframes as _Keyframe[]) {
+        for (const dp of keyframe.data_points as any[]) {
+            if (dp.file) continue;
+            const file = resolve_particle_effect(dp.effect || '');
+            if (file) dp.file = file;
+        }
+    }
+}
+
+/**
  * Re-resolves every particle keyframe in the project. Also exposed through the "Reload VFX
  * Previews" action, for effects authored by hand or added to the assets folder after the model was
  * opened. Returns how many data points now have an emitter.

@@ -158,6 +158,20 @@ function find_sound_by_name(dir: string, name: string, depth = 0): string | null
     return null;
 }
 
+/** Links any sound data point on this animator that has a location but no audio file yet. */
+export function ensure_sound_links(animator: any): void {
+    const keyframes = animator?.sound;
+    if (!keyframes?.length) return;
+
+    for (const keyframe of keyframes as _Keyframe[]) {
+        for (const dp of keyframe.data_points as any[]) {
+            if (dp.file) continue;
+            const file = sound_file_for_location((dp.effect || '').trim());
+            if (file) dp.file = file;
+        }
+    }
+}
+
 /**
  * Re-resolves the audio file on every sound keyframe. Blockbench saves `file` into the .bbmodel as
  * an absolute path, so a project opened elsewhere points at a file that does not exist. The path
