@@ -85,7 +85,7 @@ function without_extension(path: string): string {
  */
 export function sound_location_for_file(filePath: string): string | null {
     const p = filePath.replace(/\\/g, '/');
-    const match = /\/assets\/([^/]+)\/sounds\/(.+)$/.exec(p);
+    const match = /\/assets\/([^/]+)\/(sounds\/.+)$/.exec(p);
     if (!match) return null;
     return `${match[1]}:${without_extension(match[2])}`;
 }
@@ -109,7 +109,7 @@ function sound_location_for_data_point(dp: KeyframeDataPointData): string | null
     // game:bruister_peck_*. Borrow the domain and folder from the file the preview resolved to,
     // keeping the authored name so a trailing wildcard survives (VS expands those itself, see
     // SoundEngine.EndsWithWildCard).
-    const fromFile = dp.file ? sound_location_for_file(dp.file) : null;
+    const fromFile = sound_location_for_file(dp.file || sound_file_for_location(effect) || '');
     if (!fromFile) return effect;
 
     const colon = fromFile.indexOf(':');
@@ -134,7 +134,7 @@ function sound_file_for_location(location: string): string | null {
 
     const colon = location.indexOf(':');
     const domain = colon >= 0 ? location.slice(0, colon) : ctx.domain;
-    const path = colon >= 0 ? location.slice(colon + 1) : location;
+    const path = (colon >= 0 ? location.slice(colon + 1) : location).replace(/^sounds\//, '');
     if (!path) return null;
 
     // A `*` marks a random-variant set (bruister_peck_* -> bruister_peck_1/2/3). Preview the

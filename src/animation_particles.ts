@@ -16,12 +16,49 @@ import { is_vs_project } from "./util";
 const fs = requireNativeModule('fs');
 const nodePath = requireNativeModule('path');
 
+declare var WinterskyScene: any;
+
 /** Effect codes already resolved this session: code -> file path, or null when unresolvable. */
 const resolvedEffects = new Map<string, string | null>();
+
+const namespacedEmitters = new Set<string>();
 
 /** Resets the cache so a newly added particle file is picked up without restarting Blockbench. */
 export function clear_particle_cache(): void {
     resolvedEffects.clear();
+    namespacedEmitters.clear();
+}
+
+function clear_emitter_mirror(file: string): void {
+    const effect = Animator.particle_effects[file];
+    if (!effect) return;
+
+    const magnitude = Math.abs(WinterskyScene?.global_options?.scale ?? 1) || 1;
+    for (const key of Object.keys(effect.emitters)) {
+        const emitter = effect.emitters[key];
+        for (const space of [emitter.local_space, emitter.global_space]) {
+            if (!space) continue;
+            const s = space.scale;
+            if (s.x < 0 || s.y < 0 || s.z < 0) s.set(magnitude, magnitude, magnitude);
+        }
+    }
+}
+
+function ensure_emitter_namespaced(file: string): boolean {
+    if (namespacedEmitters.has(file)) {
+        clear_emitter_mirror(file);
+        return true;
+    }
+
+    try {
+        Animator.loadParticleEmitter(file, namespace_components(fs.readFileSync(file, 'utf-8')));
+    } catch (e) {
+        console.warn(`[VS Particles] Could not load emitter "${file}":`, e);
+        return false;
+    }
+    namespacedEmitters.add(file);
+    clear_emitter_mirror(file);
+    return true;
 }
 
 /**
@@ -63,15 +100,9 @@ export function resolve_particle_effect(effectCode: string): string | null {
         return null;
     }
 
-    // Registering the same path twice is harmless; Blockbench replaces the config in place.
-    if (!Animator.particle_effects[file]) {
-        try {
-            Animator.loadParticleEmitter(file, namespace_components(fs.readFileSync(file, 'utf-8')));
-        } catch (e) {
-            console.warn(`[VS Particles] Could not load emitter "${file}":`, e);
-            resolvedEffects.set(code, null);
-            return null;
-        }
+    if (!ensure_emitter_namespaced(file)) {
+        resolvedEffects.set(code, null);
+        return null;
     }
 
     resolvedEffects.set(code, file);
@@ -96,8 +127,41 @@ function namespace_components(content: string): string {
     for (const [name, value] of Object.entries(components)) {
         namespaced[name.includes(':') ? name : `minecraft:${name}`] = value;
     }
-    json.particle_effect.components = namespaced;
+    json.particle_effect.components = mirror_motion(namespaced);
     return JSON.stringify(json);
+}
+
+function negate(value: unknown): unknown {
+    if (typeof value === 'number') return -value;
+    if (typeof value === 'string' && value.trim()) return `-(${value})`;
+    return value;
+}
+
+const MIRRORED_FIELDS: Record<string, string[]> = {
+    'minecraft:particle_motion_dynamic': ['linear_acceleration'],
+    'minecraft:particle_motion_parametric': ['relative_position', 'direction'],
+    'minecraft:particle_initial_speed': ['*'],
+    'minecraft:emitter_shape_point': ['offset', 'direction'],
+    'minecraft:emitter_shape_sphere': ['offset', 'direction'],
+    'minecraft:emitter_shape_box': ['offset', 'direction'],
+    'minecraft:emitter_shape_disc': ['offset', 'direction', 'plane_normal'],
+    'minecraft:emitter_shape_entity_aabb': ['direction'],
+};
+
+function mirror_motion(components: Record<string, unknown>): Record<string, unknown> {
+    for (const [name, fields] of Object.entries(MIRRORED_FIELDS)) {
+        const component = components[name] as any;
+        if (!component) continue;
+
+        if (fields[0] === '*') {
+            if (Array.isArray(component)) components[name] = component.map(negate);
+            continue;
+        }
+        for (const field of fields) {
+            if (Array.isArray(component[field])) component[field] = component[field].map(negate);
+        }
+    }
+    return components;
 }
 
 /** Builds one Blockbench particle data point, with a preview file attached when we can find one. */
@@ -134,7 +198,10 @@ export function ensure_particle_links(animator: any): void {
 
     for (const keyframe of keyframes as _Keyframe[]) {
         for (const dp of keyframe.data_points as any[]) {
-            if (dp.file) continue;
+            if (dp.file) {
+                ensure_emitter_namespaced(dp.file);
+                continue;
+            }
             const file = resolve_particle_effect(dp.effect || '');
             if (file) dp.file = file;
         }
@@ -160,9 +227,13 @@ export function relink_particle_previews(): number {
                 if (file) {
                     dp.file = file;
                     linked++;
-                } else {
-                    delete dp.file;
+                    continue;
                 }
+                if (dp.file && fs.existsSync(dp.file) && ensure_emitter_namespaced(dp.file)) {
+                    linked++;
+                    continue;
+                }
+                delete dp.file;
             }
         }
     }
