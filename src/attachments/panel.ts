@@ -2,11 +2,18 @@ import { exportAttachmentsVS } from './export_attachment_vs';
 import { exportAttachmentsBB } from './export_attachment_bb';
 import { deleteSection, deleteSectionSafe } from './delete_section';
 import { findAttachments } from './discovery';
+import type { IAttachmentSection } from './discovery';
 import { DISCOVERY_DEBOUNCE_MS, MIN_TOUCH_TARGET_SIZE, QUICK_MESSAGE_DURATION } from './constants';
 import { getActiveSlotNames } from './presets';
 import { getSlotInfo, getSlotCategory } from './slot_helpers';
 
 const DEBUG = false;
+
+interface AttachmentPanelState {
+    sections: IAttachmentSection[];
+    openSections: string[];
+    hoveredSection: string | null;
+}
 
 function logDebug(message: string, ...args: any[]) {
     if (DEBUG) console.log(message, ...args);
@@ -113,7 +120,7 @@ function updateOutlinerSelection(elements: any[]) {
     elements.forEach((element: any) => {
         Outliner.selected.safePush(element);
     });
-    (updateSelection as any)();
+    updateSelection();
 }
 
 
@@ -378,10 +385,10 @@ const vuePanel = {
             </div>
         </div>
     `,
-    data: () => ({
+    data: (): AttachmentPanelState => ({
         sections: [],
         openSections: [],
-        hoveredSection: null as string | null
+        hoveredSection: null
     }),
     methods: {
         /**
@@ -512,19 +519,19 @@ const vuePanel = {
         /**
          * Updates the list of attachments by calling the discovery function.
          */
-        updateAttachments() {
-            (this as any).sections = findAttachments();
+        updateAttachments(this: AttachmentPanelState) {
+            this.sections = findAttachments();
         },
         /**
          * Toggles the visibility of a section in the panel.
          * @param {string} slot The slot name of the section to toggle.
          */
-        toggleSection(slot: string) {
-            const index = (this as any).openSections.indexOf(slot);
+        toggleSection(this: AttachmentPanelState, slot: string) {
+            const index = this.openSections.indexOf(slot);
             if (index > -1) {
-                (this as any).openSections.splice(index, 1);
+                this.openSections.splice(index, 1);
             } else {
-                (this as any).openSections.push(slot);
+                this.openSections.push(slot);
             }
         },
         /**
@@ -532,8 +539,8 @@ const vuePanel = {
          * @param {string} slot The slot name of the section.
          * @returns {boolean} True if the section is open, false otherwise.
          */
-        isSectionOpen(slot: string) {
-            return (this as any).openSections.includes(slot);
+        isSectionOpen(this: AttachmentPanelState, slot: string) {
+            return this.openSections.includes(slot);
         },
         /**
          * Selects an element and all its children.
