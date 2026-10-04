@@ -416,10 +416,11 @@ function traverseAttachment(
 ) {
     for (const node of nodes) {
         if (!node.export) continue;
+        if (!(node instanceof Group || node instanceof Cube)) continue;
 
         // Filter: ONLY process nodes with matching clothingSlot
         // Don't include nodes with no slot, as they might be base model elements
-        const nodeSlot = (node as any).clothingSlot;
+        const nodeSlot = node.clothingSlot;
         const hasMatchingSlot = !nodeSlot || nodeSlot.trim() === '' || nodeSlot.trim() === targetSlot.trim();
 
         // Skip nodes that don't have the matching slot
