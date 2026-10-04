@@ -1,5 +1,9 @@
 import { VS_Direction, VS_EditorSettings, VS_Face, VS_ReflectiveMode } from "./vs_shape_def";
 
+for (const name of ['vs_code', 'vs_onActivityStopped', 'vs_onAnimationEnd', 'vs_library_ref']) {
+    new Property(Blockbench.Animation, 'string', name, { exposed: false });
+}
+
 export const VS_PROJECT_PROPS = [
     new Property(ModelProject, "string", "backDropShape", { exposed: false, }),
     new Property(ModelProject, "string", "collapsedPaths", { exposed: false, }),

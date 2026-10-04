@@ -21,6 +21,7 @@ import { compile_animation, compile_animation_library } from "./export_animation
 import { create_animation } from "./import_animation";
 import { VS_Animation, VS_AnimationLibrary } from "./vs_shape_def";
 import { parse_model_location, basename_no_ext } from "./animation_library_paths";
+import JSON5 from "json5";
 
 const fs = requireNativeModule('fs');
 
@@ -56,20 +57,16 @@ function build_library(path: string | undefined, animations: VS_Animation[]): VS
 
 function read_library(path: string | undefined): VS_AnimationLibrary | null {
     if (!path || !fs.existsSync(path)) return null;
-    try {
-        const parsed = autoParseJSON(fs.readFileSync(path, 'utf-8')) as VS_AnimationLibrary;
-        return parsed && Array.isArray(parsed.animations) ? parsed : null;
-    } catch (e) {
-        console.error('[VS Animation Codec] Failed to read existing library, overwriting:', e);
-        return null;
-    }
+    const library = JSON5.parse(fs.readFileSync(path, 'utf-8')) as VS_AnimationLibrary;
+    if (!Array.isArray(library.animations)) throw new Error(`Invalid animation library: ${path}`);
+    return library;
 }
 
 /** Parses a VS animation library file and adds its animations (grouped under `file.path`). */
 function load_file(file: AnimationCodecFile, animation_filter?: string[]): _Animation[] {
-    const json = (file.json ?? autoParseJSON(file.content as string)) as VS_AnimationLibrary;
+    const json = (file.json ?? JSON5.parse(file.content as string)) as VS_AnimationLibrary;
     const created: _Animation[] = [];
-    if (!json || !Array.isArray(json.animations)) return created;
+    if (!Array.isArray(json.animations)) throw new Error(`Invalid animation library: ${file.path}`);
 
     libraryMeta.set(file.path, { code: json.code, name: json.name });
 
@@ -124,7 +121,27 @@ function pick_file(): void {
 
 /** Loads a single picked file into the project (called by pickFile and the file menu). */
 function import_file(file: AnimationCodecFile): _Animation[] {
-    return load_file(file);
+    Undo.initEdit({ animations: [], outliner: true, elements: Cube.all });
+    const created = load_file(file);
+    Undo.finishEdit('Import animations', { animations: created });
+    return created;
+}
+
+function reload_animations(animations: _Animation[]): void {
+    if (!animations.length) return;
+    const path = animations[0].path;
+    const json = JSON5.parse(fs.readFileSync(path, 'utf-8')) as VS_AnimationLibrary;
+    if (!Array.isArray(json.animations)) throw new Error(`Invalid animation library: ${path}`);
+    const selected = animations.find(a => a.selected);
+    Undo.initEdit({ animations, outliner: true, elements: Cube.all });
+    animations.forEach(a => a.remove(false, false));
+    const created = load_file({ path, json }, animations.map(a => a.saved_name || a.name));
+    for (const animation of created) {
+        const previous = animations.find(a => (a.saved_name || a.name) === animation.name)!;
+        (animation as any).vs_library_ref = (previous as any).vs_library_ref;
+        if (previous === selected) animation.select();
+    }
+    Undo.finishEdit('Reload animations', { animations: created });
 }
 
 /**
@@ -166,6 +183,7 @@ function save_animation(animation: _Animation, save_as?: boolean): void {
             custom_writer: (_content, exportPath) => {
                 if (!exportPath) return;
                 animation.path = exportPath;
+                delete (animation as any).vs_library_ref;
                 write_animation_to_library(animation);
             }
         });
@@ -204,7 +222,7 @@ function export_file(path: string, save_as?: boolean): void {
         startpath: filterPath || default_animations_dir(),
         custom_writer: (_content, exportPath) => {
             if (!exportPath) return;
-            animations.forEach(a => { a.path = exportPath; });
+            animations.forEach(a => { a.path = exportPath; delete (a as any).vs_library_ref; });
             fs.writeFileSync(exportPath, autoStringify(compile_file(animations)));
             animations.forEach(a => { a.saved = true; a.saved_name = a.name; });
         },
@@ -214,15 +232,8 @@ function export_file(path: string, save_as?: boolean): void {
 /** Removes an animation's entry from its library file (when deleted from the project). */
 function delete_animation_from_file(animation: _Animation): void {
     const path = animation.path;
-    if (!path || !fs.existsSync(path)) return;
-    let library: VS_AnimationLibrary | null = null;
-    try {
-        library = autoParseJSON(fs.readFileSync(path, 'utf-8')) as VS_AnimationLibrary;
-    } catch (e) {
-        console.error('[VS Animation Codec] Failed to read library for deletion:', e);
-        return;
-    }
-    if (!library || !Array.isArray(library.animations)) return;
+    const library = read_library(path);
+    if (!library) return;
     const target = animation.saved_name ?? animation.name;
     library.animations = library.animations.filter(a => a.name !== target);
     Blockbench.writeFile(path, { content: autoStringify(library) });
@@ -240,6 +251,8 @@ function create_vs_animation_codec(): AnimationCodec | undefined {
         pickFile: pick_file,
         importFile: import_file,
         loadFile: load_file,
+        reloadFile: path => reload_animations(all_animations().filter(a => a.path === path && a.saved)),
+        reloadAnimation: animation => reload_animations([animation]),
         compileAnimation: (animation) => compile_animation(animation),
         compileFile: compile_file,
         saveAnimation: save_animation,

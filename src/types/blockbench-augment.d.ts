@@ -20,7 +20,7 @@ declare global {
         pickFile?(): void;
         importFile?(file: AnimationCodecFile, auto_loaded?: boolean): _Animation[];
         loadFile?(file: AnimationCodecFile, animation_filter?: string[]): _Animation[];
-        reloadFile?(file: AnimationCodecFile): void;
+        reloadFile?(path: string): void;
         reloadAnimation?(animation: _Animation): void;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         compileAnimation?(animation: _Animation): any;

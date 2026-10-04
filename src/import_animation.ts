@@ -18,6 +18,7 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
     const animation = ((new Animation({
         //@ts-expect-error: Blockbench overwrites libdom's Animation type with its own Animation Class, but TypeScript doesn't include a way to overwrite UMD global types.
         name: vsAnimation.name,
+        path: path || '',
         loop: isLooping ? 'loop' : (vsAnimation.onAnimationEnd === 'Hold' ? 'hold' : 'once'),
         length: animationLength,
         snapping: FPS
@@ -61,9 +62,28 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
             });
         }
 
+        if (vsKeyframe.textures) {
+            getEffectAnimator(animation).addKeyframe({
+                channel: 'timeline',
+                time: vsKeyframe.frame / FPS,
+                data_points: [{ script: `"textures": ${JSON.stringify(vsKeyframe.textures)}` }],
+            });
+        }
+
         for (const boneName in vsKeyframe.elements) {
             const transform = vsKeyframe.elements[boneName];
-            const bone = Group.all.find(g => g.name === boneName);
+            let bone = Group.all.find(g => g.name === boneName);
+            if (!bone) {
+                const cube = Cube.all.find(c => c.name === boneName);
+                if (cube) {
+                    bone = new Group(cube.getSaveCopy()).sortInBefore(cube).init();
+                    cube.name = `${boneName}_geo`;
+                    cube.rotation = [0, 0, 0];
+                    cube.stepParentName = '';
+                    cube.addTo(bone);
+                    Canvas.updateAllPositions();
+                }
+            }
             if (!bone) continue;
 
             const animator = animation.getBoneAnimator(bone);
@@ -88,12 +108,10 @@ export function import_animations(animations: Array<VS_Animation>) {
     animations.forEach(vsAnimation => create_animation(vsAnimation));
 };
 
-// Blockbench lazily creates the effect animator on first access, but only on builds where
-// `animators` is the proxy. Fall back to constructing it so particle import cannot throw.
 function getEffectAnimator(animation: _Animation): any {
     const animators = animation.animators as any;
     if (animators.effects) return animators.effects;
-    animators.effects = new EffectAnimator(null, animation, 'Effects');
+    animators.effects = new (EffectAnimator as any)(animation);
     return animators.effects;
 }
 

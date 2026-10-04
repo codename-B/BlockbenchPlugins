@@ -154,7 +154,7 @@ export function ex(options): VS_Shape {
     for (const animation of allAnimations) {
         if (!animation.path) continue;
         // @ts-expect-error: custom property for round-trip fidelity
-        const ref: string | null = animation.vs_library_ref ?? path_to_reference(animation.path);
+        const ref: string | null = animation.vs_library_ref || path_to_reference(animation.path);
         if (ref && !seenRefs.has(ref)) { seenRefs.add(ref); libraryRefs.push(ref); }
     }
 

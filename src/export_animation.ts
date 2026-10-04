@@ -214,11 +214,8 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
             });
             (Object.keys(byChannel) as BBChannel[]).forEach(ch => byChannel[ch].sort((a, b) => a.time - b.time));
 
-            // Unit scale is normally omitted, but a non-linear scale channel needs every one of
-            // its keyframes present in the JSON: import detects the channel by the stretch fields
-            // and sizes each bezier segment from the gaps between them. Dropping an all-1 keyframe
-            // would silently lengthen the neighbouring segment.
-            const scaleNeedsAllKeys = byChannel.scale.some(kf => mapInterpolation(kf.interpolation).mode !== null);
+            const scaleNeedsAllKeys = byChannel.scale.some(kf => mapInterpolation(kf.interpolation).mode !== null
+                || ['x', 'y', 'z'].some(axis => Number(kf.data_points[0][axis]) !== 1));
 
             animator.keyframes.forEach(kf => {
                 const { mode: vsInterp, isCatmull } = mapInterpolation(kf.interpolation);
@@ -372,6 +369,8 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
             if (frame0) {
                 const virtualFrame = JSON.parse(JSON.stringify(frame0));
                 virtualFrame.frame = lastFrame;
+                delete virtualFrame.sounds;
+                delete virtualFrame.particles;
                 vsAnimation.keyframes.push(virtualFrame);
                 vsAnimation.keyframes.sort((a, b) => a.frame - b.frame);
             }
