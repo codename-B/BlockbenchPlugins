@@ -74,7 +74,6 @@ export function process_group(
         rotationOrigin = util.vector_add(rotationOrigin, offset);
     }
 
-    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
 
     const vsElement: VS_Element = {
         name: node.name,
@@ -186,7 +185,6 @@ export function process_collapsed_group(
     // Process faces from the _geo cube
     const reduced_faces = process_faces(geoChild.faces);
 
-    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
 
     const vsElement: VS_Element = {
         name: node.name,

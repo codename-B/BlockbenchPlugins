@@ -39,6 +39,10 @@ declare global {
         per_animator_rotation_interpolation?: boolean;
     }
 
+    interface OutlinerNode {
+        addTo(target?: OutlinerNode | null): this;
+    }
+
     interface Locator {
         position?: ArrayVector3;
         /**

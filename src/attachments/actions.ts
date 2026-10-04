@@ -50,7 +50,6 @@ function createImportAction(config: ImportActionConfig) {
             }, function(files) {
                 if (!files || !files.length) return;
 
-                const fileName = files[0]?.name || 'attachment';
                 Undo.initEdit({ outliner: true });
 
                 const elementsBefore = new Set([...Group.all, ...Cube.all]);

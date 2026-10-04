@@ -2,7 +2,7 @@ import {export_model} from "./export_model";
 import { compile_animation_library } from "./export_animation";
 import { VS_EditorSettings, VS_Shape } from "./vs_shape_def";
 import { VS_PROJECT_PROPS } from "./property";
-import { export_textures, resolveTextureLocation, warnTextureReadErrors } from "./export_textures";
+import { resolveTextureLocation, warnTextureReadErrors } from "./export_textures";
 import { path_to_reference } from "./animation_library_paths";
 
 const fs = requireNativeModule('fs');

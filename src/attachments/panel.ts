@@ -3,9 +3,8 @@ import { exportAttachmentsBB } from './export_attachment_bb';
 import { deleteSection, deleteSectionSafe } from './delete_section';
 import { findAttachments } from './discovery';
 import type { IAttachmentSection } from './discovery';
-import { DISCOVERY_DEBOUNCE_MS, MIN_TOUCH_TARGET_SIZE, QUICK_MESSAGE_DURATION } from './constants';
-import { getActiveSlotNames } from './presets';
-import { getSlotInfo, getSlotCategory } from './slot_helpers';
+import { DISCOVERY_DEBOUNCE_MS, QUICK_MESSAGE_DURATION } from './constants';
+import { getSlotInfo } from './slot_helpers';
 
 const DEBUG = false;
 
@@ -27,10 +26,6 @@ type AttachmentOutlinerNode = OutlinerNode & {
     visibility?: boolean;
     toggleVisibility?: (visible: boolean) => void;
 };
-
-function logDebug(message: string, ...args: any[]) {
-    if (DEBUG) console.log(message, ...args);
-}
 
 // Track recently imported elements (within last 5 minutes)
 const RECENT_IMPORT_THRESHOLD = 5 * 60 * 1000; // 5 minutes in ms
@@ -119,16 +114,6 @@ function getElementDepth(element: any): number {
 function getMinDepth(elements: any[]): number {
     if (elements.length === 0) return 0;
     return Math.min(...elements.map(el => getElementDepth(el)));
-}
-
-/**
- * Calculates the maximum depth among all elements in a section.
- * @param elements Array of elements in the section.
- * @returns The maximum depth found.
- */
-function getMaxDepth(elements: any[]): number {
-    if (elements.length === 0) return 0;
-    return Math.max(...elements.map(el => getElementDepth(el)));
 }
 
 /**

@@ -3,7 +3,6 @@ import * as PACKAGE from "../package.json";
 import { is_vs_project } from "./util";
 import { im } from "./import";
 import { is_backdrop_project } from "./util/misc";
-import { codecVS } from "./codec";
 import { ex } from "./export";
 
 const fs = requireNativeModule('fs');

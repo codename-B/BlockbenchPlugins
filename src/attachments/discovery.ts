@@ -1,5 +1,3 @@
-import { getActiveSlotNames } from './presets';
-
 export interface IAttachmentSection {
   slot: string;
   elements: (Group | Cube)[];

@@ -1,6 +1,3 @@
-const fs = requireNativeModule('fs');
-const path = requireNativeModule('path');
-
 import { events } from "./util/events";
 import PACKAGE from "../package.json";
 
