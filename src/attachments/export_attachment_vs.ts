@@ -33,7 +33,7 @@ function getElementBindRotation(element: Group | Cube): Vector3Tuple {
 }
 
 function getSocketFrom(group: Group): Vector3Tuple {
-    const storedFrom = (group as any).vs_group_from;
+    const storedFrom = group.vs_group_from;
     if (isFiniteVector3(storedFrom)) return [...storedFrom];
     const geoChild = group.children.find(child =>
         child instanceof Cube && child.name === `${group.name}_geo`
@@ -381,9 +381,9 @@ function process_attachment_group(
 
     // Filter children to ONLY include those with matching clothingSlot
     // Don't include groups with no slot, as they might be base model elements
-    const filteredChildren = (node.children || []).filter((child: any) => {
+    const filteredChildren = (node.children || []).filter(child => {
         if (!(child instanceof Group || child instanceof Cube)) return false;
-        const childSlot = (child as any).clothingSlot;
+        const childSlot = child.clothingSlot;
         // Empty means inherit from this attachment root. An explicit different
         // slot is a real boundary and must not be exported with this attachment.
         return !childSlot || childSlot.trim() === '' || childSlot.trim() === targetSlot.trim();
