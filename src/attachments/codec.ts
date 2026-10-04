@@ -127,7 +127,7 @@ export function createExportCodec(selection: any[] = []) {
         extension: 'bbmodel',
         remember: true,
         export() {
-            if (selection.length === 0) return;
+            if (!Project || selection.length === 0) return;
             Blockbench.export({
                 resource_id: 'model',
                 type: this.name,
@@ -138,6 +138,7 @@ export function createExportCodec(selection: any[] = []) {
             });
         },
         compile(selection: any[], options?: any) {
+            if (!Project) throw new Error('Cannot export attachments without an open project.');
             if (!options) options = {};
             const model: any = {
                 meta: {

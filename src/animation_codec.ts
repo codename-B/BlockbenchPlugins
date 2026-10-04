@@ -54,7 +54,6 @@ function build_library(path: string | undefined, animations: VS_Animation[]): VS
     return library;
 }
 
-/** Reads the library currently on disk at `path`, or null if absent/unreadable. */
 function read_library(path: string | undefined): VS_AnimationLibrary | null {
     if (!path || !fs.existsSync(path)) return null;
     try {
@@ -64,40 +63,6 @@ function read_library(path: string | undefined): VS_AnimationLibrary | null {
         console.error('[VS Animation Codec] Failed to read existing library, overwriting:', e);
         return null;
     }
-}
-
-/**
- * Assembles the bytes to write for `path` from freshly compiled animations.
- *
- * Both the ANIMATIONS-panel Save and `Animation > Export Animations...` route through here so
- * they produce identical output. When a library already exists at `path`, each compiled animation
- * replaces the entry of the same name in place (keeping the on-disk ordering and the file's
- * `code`/`name`), new ones are appended, and entries that are not loaded into the project are
- * left untouched. `renamedFrom` maps a compiled animation's current name back to the name it
- * still has on disk, so a rename updates the existing entry instead of adding a second one.
- */
-function assemble_library(
-    path: string | undefined,
-    compiled: VS_Animation[],
-    renamedFrom?: Map<string, string>,
-): VS_AnimationLibrary {
-    const existing = read_library(path);
-    if (!existing) return build_library(path, compiled);
-
-    if (path) libraryMeta.set(path, { code: existing.code, name: existing.name });
-
-    for (const vsAnim of compiled) {
-        const oldName = renamedFrom?.get(vsAnim.name) ?? vsAnim.name;
-        const idx = existing.animations.findIndex(a => a.name === oldName || a.name === vsAnim.name);
-        if (idx >= 0) {
-            existing.animations[idx] = vsAnim;
-            // Drop any later duplicate left over from a rename.
-            existing.animations = existing.animations.filter((a, i) => i === idx || a.name !== vsAnim.name);
-        } else {
-            existing.animations.push(vsAnim);
-        }
-    }
-    return existing;
 }
 
 /** Parses a VS animation library file and adds its animations (grouped under `file.path`). */
@@ -115,22 +80,31 @@ function load_file(file: AnimationCodecFile, animation_filter?: string[]): _Anim
     return created;
 }
 
-/**
- * Compiles a set of animations into a full VS library object (`Animation > Export Animations...`).
- * When every animation belongs to the same existing library file, the result is merged into that
- * file's current contents so Export and the panel's Save produce byte-identical output. Mixing
- * animations from different files has no single file to merge against, so it writes a fresh
- * library containing exactly the selection.
- */
-function compile_file(animations: _Animation[]): VS_AnimationLibrary {
+function compile_file(
+    animations: _Animation[],
+    compiled = compile_animation_library(animations).animations,
+): VS_AnimationLibrary {
     const path = animations[0]?.path;
     const sharedPath = path && animations.every(a => a.path === path) ? path : undefined;
-    const compiled = compile_animation_library(animations).animations;
+    const library = read_library(sharedPath);
+    if (!library) return build_library(sharedPath, compiled);
+
+    if (sharedPath) libraryMeta.set(sharedPath, { code: library.code, name: library.name });
     const renamedFrom = new Map<string, string>();
     for (const a of animations) {
         if (a.saved_name && a.saved_name !== a.name) renamedFrom.set(a.name, a.saved_name);
     }
-    return assemble_library(sharedPath, compiled, renamedFrom);
+    for (const vsAnim of compiled) {
+        const oldName = renamedFrom.get(vsAnim.name) ?? vsAnim.name;
+        const idx = library.animations.findIndex(a => a.name === oldName || a.name === vsAnim.name);
+        if (idx >= 0) {
+            library.animations[idx] = vsAnim;
+            library.animations = library.animations.filter((a, i) => i === idx || a.name !== vsAnim.name);
+        } else {
+            library.animations.push(vsAnim);
+        }
+    }
+    return library;
 }
 
 /** Opens a dialog to import one or more VS animation library files. */
@@ -168,11 +142,7 @@ function write_animation_to_library(animation: _Animation): void {
     }
     const path = animation.path;
 
-    const renamedFrom = new Map<string, string>();
-    if (animation.saved_name && animation.saved_name !== vsAnim.name) {
-        renamedFrom.set(vsAnim.name, animation.saved_name);
-    }
-    const library = assemble_library(path, [vsAnim], renamedFrom);
+    const library = compile_file([animation], [vsAnim]);
 
     Blockbench.writeFile(path, { content: autoStringify(library) }, (real_path) => {
         animation.saved = true;

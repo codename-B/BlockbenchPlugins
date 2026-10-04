@@ -489,6 +489,10 @@ function findTopmostAttachmentRoot(element: any, clothingSlot: string): Group | 
  * @param {Array<Group>} selection - An array of selected attachment groups.
  */
 export function exportAttachmentsVS(selection: Group[]) {
+    if (!Project) {
+        Blockbench.showQuickMessage("Please open a project before exporting attachments.", QUICK_MESSAGE_DURATION);
+        return;
+    }
     if (!selection || selection.length === 0) {
         Blockbench.showQuickMessage("Please select one or more attachments to export.", QUICK_MESSAGE_DURATION);
         return;
