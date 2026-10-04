@@ -92,7 +92,6 @@ function load_animation_libraries(refs: string[], modelPath: string) {
         }
         const created = vsAnimationCodec.loadFile({ path: filePath, content: fileContent });
         for (const anim of created) {
-            // @ts-expect-error: custom property for round-trip fidelity
             anim.vs_library_ref = ref;
         }
     }

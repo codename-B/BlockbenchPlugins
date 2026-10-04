@@ -16,7 +16,7 @@ const clear_animations_action = createAction(`${PACKAGE.name}:clear_animations_v
         return is_vs_project(Project);
     },
     click: function () {
-        const total = (Animation as unknown as typeof _Animation).all.length;
+        const total = Blockbench.Animation.all.length;
         if (total === 0) {
             Blockbench.showQuickMessage('No animations to clear');
             return;

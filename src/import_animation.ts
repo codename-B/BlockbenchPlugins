@@ -1,5 +1,5 @@
 import * as util from "./util";
-import { VS_Animation, VS_AnimationKey, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_AnimationNumericField, VS_AnimationInterpolationField, VS_KeyFrameInterpolation } from "./vs_shape_def";
 import { particle_data_point } from "./animation_particles";
 import { sound_data_point } from "./animation_sounds";
 
@@ -15,14 +15,13 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
     const animationLength = vsAnimation.quantityframes / FPS;
     const isLooping = vsAnimation.onAnimationEnd === 'Repeat';
 
-    const animation = ((new Animation({
-        //@ts-expect-error: Blockbench overwrites libdom's Animation type with its own Animation Class, but TypeScript doesn't include a way to overwrite UMD global types.
+    const animation = new Blockbench.Animation({
         name: vsAnimation.name,
         path: path || '',
         loop: isLooping ? 'loop' : (vsAnimation.onAnimationEnd === 'Hold' ? 'hold' : 'once'),
         length: animationLength,
         snapping: FPS
-    }) as unknown) as _Animation).add();
+    }).add();
 
     // Associate with a library file when loaded from one (drives panel grouping + saving).
     if (path) animation.path = path;
@@ -32,11 +31,8 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
     }
 
     // Preserve VS-specific animation properties for round-trip fidelity
-    // @ts-expect-error: custom property for round-trip
     animation.vs_code = vsAnimation.code;
-    // @ts-expect-error: custom property for round-trip
     animation.vs_onActivityStopped = vsAnimation.onActivityStopped;
-    // @ts-expect-error: custom property for round-trip
     animation.vs_onAnimationEnd = vsAnimation.onAnimationEnd;
 
     // Per-bone, per-channel sorted frame lists so bezier handle widths can be placed against the
@@ -118,12 +114,12 @@ function getEffectAnimator(animation: _Animation): any {
 type BBImportChannel = 'rotation' | 'position' | 'scale';
 
 interface ImportChannelConfig {
-    interp: keyof VS_AnimationKey;
-    value: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
-    tangentIn: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
-    tangentOut: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
-    widthIn: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
-    widthOut: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
+    interp: VS_AnimationInterpolationField;
+    value: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
+    tangentIn: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
+    tangentOut: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
+    widthIn: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
+    widthOut: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
     default: number;
 }
 
@@ -169,7 +165,7 @@ function buildChannelFrames(vsAnimation: VS_Animation): ChannelFrameMap {
             const transform = kf.elements[boneName];
             const entry = map[boneName] || (map[boneName] = { rotation: [], position: [], scale: [] });
             (Object.keys(IMPORT_CHANNELS) as BBImportChannel[]).forEach(channel => {
-                if (IMPORT_CHANNELS[channel].value.some(k => (transform as any)[k] != null)) {
+                if (IMPORT_CHANNELS[channel].value.some(k => transform[k] != null)) {
                     entry[channel].push(kf.frame);
                 }
             });
@@ -192,15 +188,15 @@ function buildChannelKeyframeOptions(
     fps: number,
 ): KeyframeOptions | null {
     const cfg = IMPORT_CHANNELS[channel];
-    if (!cfg.value.some(k => (transform as any)[k] != null)) return null;
+    if (!cfg.value.some(k => transform[k] != null)) return null;
 
     const value = {
-        x: (transform as any)[cfg.value[0]] ?? cfg.default,
-        y: (transform as any)[cfg.value[1]] ?? cfg.default,
-        z: (transform as any)[cfg.value[2]] ?? cfg.default,
+        x: transform[cfg.value[0]] ?? cfg.default,
+        y: transform[cfg.value[1]] ?? cfg.default,
+        z: transform[cfg.value[2]] ?? cfg.default,
     };
 
-    const bbInterp = mapInterpolation((transform as any)[cfg.interp]);
+    const bbInterp = mapInterpolation(transform[cfg.interp]);
     const opts: KeyframeOptions = {
         interpolation: bbInterp,
         time: frame / fps,
@@ -238,8 +234,8 @@ function segmentDurations(frames: number[], frame: number): { outDur: number, in
 // null when there's no adjacent segment (a boundary handle), leaving Blockbench's own default there.
 function reconstructHandle(
     transform: VS_AnimationKey,
-    tangentFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
-    widthFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
+    tangentFields: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField],
+    widthFields: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField],
     segmentFrames: number,
     sign: 1 | -1,
     fps: number,
@@ -249,9 +245,9 @@ function reconstructHandle(
     const value: [number, number, number] = [0, 0, 0];
     const time: [number, number, number] = [0, 0, 0];
     for (let i = 0; i < 3; i++) {
-        const wRaw = (transform as any)[widthFields[i]];
+        const wRaw = transform[widthFields[i]];
         const widthFrames = wRaw != null ? Number(wRaw) : defaultWidth;
-        const tRaw = (transform as any)[tangentFields[i]];
+        const tRaw = transform[tangentFields[i]];
         const tangent = tRaw != null ? Number(tRaw) : 0;
         time[i] = widthFrames / fps;
         value[i] = widthFrames !== 0 ? tangent * widthFrames / segmentFrames : 0;
@@ -270,7 +266,7 @@ function mapInterpolation(interp: VS_KeyFrameInterpolation | undefined): 'linear
  * Animations created in this call go onto the undo stack so the user can revert.
  */
 export function clear_animations(): number {
-    const all = (Animation as unknown as typeof _Animation).all.slice();
+    const all = Blockbench.Animation.all.slice();
     all.forEach(a => a.remove(true));
     return all.length;
 }

@@ -6,7 +6,16 @@
  * https://github.com/JannisX11/blockbench/blob/master/js/animations/animation_codec.ts
  */
 
+import type { VS_Animation } from '../vs_shape_def';
+
 declare global {
+    interface _Animation {
+        vs_code?: string;
+        vs_onActivityStopped?: VS_Animation['onActivityStopped'] | '';
+        vs_onAnimationEnd?: VS_Animation['onAnimationEnd'] | '';
+        vs_library_ref?: string;
+    }
+
     /** The file-like object handed to `AnimationCodec.loadFile`. */
     interface AnimationCodecFile {
         path: string;

@@ -40,6 +40,7 @@ declare global {
     }
 
     interface Locator {
+        position?: ArrayVector3;
         /**
          * VS stores a locator's position in `from`, mirroring its elements. Blockbench's own
          * locators use `position`, which the export falls back to.

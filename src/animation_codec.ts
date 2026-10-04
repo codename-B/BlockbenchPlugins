@@ -30,9 +30,9 @@ const fs = requireNativeModule('fs');
 // them keeps library files diff-stable across a round trip). Keyed by absolute file path.
 const libraryMeta = new Map<string, { code?: string, name?: string }>();
 
-/** All animations, with Blockbench's runtime `Animation` cast to the `_Animation` type. */
+/** All animations in the current project. */
 function all_animations(): _Animation[] {
-    return (Animation as unknown as typeof _Animation).all;
+    return Blockbench.Animation.all;
 }
 
 /** Default directory the file dialogs open in: `<assets>/<domain>/animations`. */
@@ -138,7 +138,7 @@ function reload_animations(animations: _Animation[]): void {
     const created = load_file({ path, json }, animations.map(a => a.saved_name || a.name));
     for (const animation of created) {
         const previous = animations.find(a => (a.saved_name || a.name) === animation.name)!;
-        (animation as any).vs_library_ref = (previous as any).vs_library_ref;
+        animation.vs_library_ref = previous.vs_library_ref;
         if (previous === selected) animation.select();
     }
     Undo.finishEdit('Reload animations', { animations: created });
@@ -183,7 +183,7 @@ function save_animation(animation: _Animation, save_as?: boolean): void {
             custom_writer: (_content, exportPath) => {
                 if (!exportPath) return;
                 animation.path = exportPath;
-                delete (animation as any).vs_library_ref;
+                delete animation.vs_library_ref;
                 write_animation_to_library(animation);
             }
         });
@@ -222,7 +222,7 @@ function export_file(path: string, save_as?: boolean): void {
         startpath: filterPath || default_animations_dir(),
         custom_writer: (_content, exportPath) => {
             if (!exportPath) return;
-            animations.forEach(a => { a.path = exportPath; delete (a as any).vs_library_ref; });
+            animations.forEach(a => { a.path = exportPath; delete a.vs_library_ref; });
             fs.writeFileSync(exportPath, autoStringify(compile_file(animations)));
             animations.forEach(a => { a.saved = true; a.saved_name = a.name; });
         },

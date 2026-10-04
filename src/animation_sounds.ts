@@ -135,8 +135,8 @@ export function ensure_sound_links(animator: any, relink = false): number {
 
 export function relink_sound_files(): number {
     let linked = 0;
-    for (const animation of (Animation as unknown as typeof _Animation).all) {
-        linked += ensure_sound_links((animation.animators as any)?.effects, true);
+    for (const animation of Blockbench.Animation.all) {
+        linked += ensure_sound_links(animation.animators?.effects, true);
     }
     return linked;
 }

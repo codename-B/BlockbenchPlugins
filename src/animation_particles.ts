@@ -157,8 +157,8 @@ export function relink_particle_previews(): number {
     clear_particle_cache();
     let linked = 0;
 
-    for (const animation of (Animation as unknown as typeof _Animation).all) {
-        linked += ensure_particle_links((animation.animators as any)?.effects, true);
+    for (const animation of Blockbench.Animation.all) {
+        linked += ensure_particle_links(animation.animators?.effects, true);
     }
     return linked;
 }

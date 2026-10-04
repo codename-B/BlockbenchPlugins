@@ -208,6 +208,12 @@ export interface VS_AnimationKey {
     stretchTangentOutWidthZ?: number,
 }
 
+export type VS_AnimationNumericField = {
+    [K in keyof VS_AnimationKey]-?: VS_AnimationKey[K] extends number | undefined ? K : never;
+}[keyof VS_AnimationKey];
+
+export type VS_AnimationInterpolationField = 'positionInterp' | 'rotationInterp' | 'scaleInterp';
+
 /**
  * In VS shape files, attachment point numeric values are stored as strings.
  * Other numeric values in VS_Element (like from, to, rotation) are stored as actual numbers.

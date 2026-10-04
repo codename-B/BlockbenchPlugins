@@ -398,7 +398,7 @@ export const VS_FACE_PROPS = [
  */
 declare global {
     interface Face {
-        glow: boolean;
+        glow?: number;
         reflectiveMode?: VS_ReflectiveMode;
         windMode?: [number, number, number, number];
         windData?: [number, number, number, number];
